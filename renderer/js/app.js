@@ -2,6 +2,14 @@ const $ = (id) => document.getElementById(id)
 
 let pairingInProgress = false
 
+function applyPerformanceProfile() {
+  const cores = Number(navigator.hardwareConcurrency || 4)
+  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  const lowPower = cores <= 4 || reduced
+  document.body.classList.toggle('liquid-performance', lowPower)
+  if (reduced) document.body.classList.add('reduce-motion')
+}
+
 async function init() {
   try {
     api.subscribe()
@@ -9,6 +17,7 @@ async function init() {
     wireEvents()
     wireStaticUI()
     applyTheme(boot.settings?.theme || 'system')
+    applyPerformanceProfile()
     if (boot.hasSession) enterApp()
     else showLogin()
   } catch (e) {
@@ -77,14 +86,14 @@ function wireEvents() {
     if (u.loggedOut) { Store.reset(); showLogin(); renderMe(); return }
     renderMe()
   })
-  api.on('chats', () => renderChatList())
+  api.on('chats', () => scheduleChatRender())
   api.on('messages', ({ jid }) => {
-    if (jid === Store.activeJid) renderMessages()
+    if (jid === Store.activeJid) scheduleMessageRender()
     else if (!document.hidden) {
       const unread = Store.messagesOf(jid).filter((m) => !m.fromMe && m.id).map((m) => m.id)
       if (unread.length) window.liquid.read(jid, unread)
     }
-    renderChatList()
+    scheduleChatRender()
   })
   api.on('presence', ({ jid }) => { if (jid === Store.activeJid) renderPresence() })
   api.on('settings', (s) => { applyTheme(s?.theme || 'system') })
@@ -359,6 +368,25 @@ function filteredChats() {
   return list
 }
 
+let chatRenderFrame = 0
+let messageRenderFrame = 0
+
+function scheduleChatRender() {
+  if (chatRenderFrame) return
+  chatRenderFrame = requestAnimationFrame(() => {
+    chatRenderFrame = 0
+    renderChatList()
+  })
+}
+
+function scheduleMessageRender() {
+  if (messageRenderFrame) return
+  messageRenderFrame = requestAnimationFrame(() => {
+    messageRenderFrame = 0
+    renderMessages()
+  })
+}
+
 function renderChatList() {
   const nav = $('chat-list')
   nav.innerHTML = ''
@@ -394,8 +422,8 @@ function openChat(jid) {
   renderMessages()
   window.liquid.loadChat(jid).then((msgs) => {
     Store.messages.set(jid, msgs)
-    renderMessages()
-    renderChatList()
+    scheduleMessageRender()
+    scheduleChatRender()
   }).catch(() => {})
 }
 
