@@ -31,7 +31,7 @@ patch(audio, [
 ])
 
 patch(video, [
-  ['import { spawn, execFile } from "node:child_process";', 'import { spawn, execFile } from "node:child_process";\\n' + ffmpegImport],
+  ['const FFMPEG_BIN = "ffmpeg";', ffmpegImport + 'const FFMPEG_BIN = require("ffmpeg-static") || "ffmpeg";'],
   ['if (!resolvedSource.startsWith("lavfi:")) {', 'if (!resolvedSource.startsWith("lavfi:") && !resolvedSource.startsWith("camera:")) {'],
   ['this.#proc = spawn(FFMPEG_BIN, args, {', 'this.#proc = spawn(FFMPEG_BIN, args, {'],
   ['if (this.source.startsWith("lavfi:")) {\\n            args.push("-f", "lavfi", "-re", "-i", this.source.slice(6));\\n        }',
