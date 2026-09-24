@@ -62,7 +62,9 @@
       }
     },
     "asarUnpack": [
-      "node_modules/ffmpeg-static/**"
+      "node_modules/ffmpeg-static/**",
+      "node_modules/@innovatorssoft/baileys/lib/Voip/**",
+      "node_modules/@roamhq/wrtc/**"
     ],
     "artifactName": "Liquid-WhatsApp-${version}-${arch}.${ext}",
     "dmg": {
