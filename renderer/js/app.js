@@ -234,6 +234,16 @@ function wireStaticUI() {
   })
   $('login-btn').addEventListener('click', doPair)
   $('login-number').addEventListener('keydown', (e) => { if (e.key === 'Enter') doPair() })
+  $('copy-pair-code').addEventListener('click', async () => {
+    const code = $('pair-code-value').textContent.replace(/-/g, '').trim()
+    if (!code || code === '—') return
+    try {
+      await navigator.clipboard.writeText(code)
+      ui.toast('Pairing code copied')
+    } catch (_) {
+      ui.toast('Could not copy the pairing code')
+    }
+  })
 
   $('btn-new-chat').addEventListener('click', () => openNewChat())
   $('btn-new-chat-empty').addEventListener('click', () => openNewChat())
