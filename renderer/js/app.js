@@ -1,18 +1,36 @@
 const $ = (id) => document.getElementById(id)
 
+let pairingInProgress = false
+
 async function init() {
-  const boot = await api.init()
-  api.subscribe()
-  wireEvents()
-  wireStaticUI()
-  applyTheme(boot.settings?.theme || 'system')
-  if (boot.hasSession) enterApp()
-  else showLogin()
+  try {
+    api.subscribe()
+    const boot = await api.init()
+    wireEvents()
+    wireStaticUI()
+    applyTheme(boot.settings?.theme || 'system')
+    if (boot.hasSession) enterApp()
+    else showLogin()
+  } catch (e) {
+    const status = $('login-status')
+    if (status) {
+      status.className = 'status-line err'
+      status.textContent = e?.message || 'Liquid WhatsApp could not start. Open View → Toggle Developer Tools for details.'
+    }
+    console.error('[renderer] boot failed', e)
+    showLogin()
+  }
 }
 
 function showLogin() {
+  pairingInProgress = false
   $('login-view').classList.remove('hidden')
   $('app-view').classList.add('hidden')
+  $('login-btn').disabled = false
+  $('pair-code').classList.add('hidden')
+  $('pair-code-value').textContent = '—'
+  $('login-status').className = 'status-line'
+  $('login-status').textContent = ''
 }
 
 function enterApp() {
@@ -41,7 +59,8 @@ let quotedMessage = null
 
 function wireEvents() {
   api.on('connection', (u) => {
-    if (u.connection === 'open') { pairingInProgress = false }\n    if (u.connection === 'open' && !Store.user && u.user) { Store.user = u.user }
+    if (u.connection === 'open') { pairingInProgress = false }
+    if (u.connection === 'open' && !Store.user && u.user) { Store.user = u.user }
     if (u.connection === 'open' && $('app-view').classList.contains('hidden')) enterApp()
     if (u.loggedOut) { Store.reset(); showLogin(); renderMe(); return }
     renderMe()
