@@ -71,6 +71,19 @@ The project also contains legacy/internal VoIP/WASM calling dependencies from ea
 
 Electron recordings are normalized with the bundled `ffmpeg-static` binary before upload. Browser WebM/Opus recordings are converted to OGG/Opus for WhatsApp push-to-talk audio.
 
+## Runtime integrity and modified-build detection
+
+Packaged macOS builds include a runtime integrity verifier. On startup, Liquid WhatsApp checks the application's macOS code signature and can distinguish:
+
+- **modified** — a previously signed app no longer passes strict signature verification.
+- **signed** — the app has a valid code signature.
+- **older** — a valid signed build is running while a newer GitHub Release is available.
+- **unsigned/development** — the build was not distributed with a verifiable signing identity.
+
+If a packaged signed application fails strict verification, Liquid WhatsApp closes instead of continuing to run the modified copy.
+
+The project also enables macOS Hardened Runtime for signed releases. Apple's code-signing and notarization system is the authoritative protection for distributed macOS applications; the runtime check is an additional application-level signal, not a replacement for Developer ID signing and notarization.
+
 ## Security, privacy and account risk
 
 Liquid WhatsApp is an independent, unofficial client. It uses an unofficial WhatsApp protocol implementation for its core messaging connection and also provides a separate WhatsApp Web window for supported calling flows.
