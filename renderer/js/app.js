@@ -243,9 +243,6 @@ function wireStaticUI() {
   $('btn-profile').addEventListener('click', openProfileModal)
   $('btn-chat-search').addEventListener('click', openMessageSearchModal)
   $('btn-gallery').addEventListener('click', openGalleryModal)
-  $('btn-profile').addEventListener('click', openProfileModal)
-  $('btn-chat-search').addEventListener('click', openMessageSearchModal)
-  $('btn-gallery').addEventListener('click', openGalleryModal)
   $('btn-logout').addEventListener('click', async () => {
     ui.prompt('Log out', 'Type LOGOUT to confirm', '', (v) => {
       if (v.toUpperCase() === 'LOGOUT') window.liquid.logout()
@@ -264,13 +261,6 @@ function wireStaticUI() {
   $('btn-media').addEventListener('click', async () => {
     await window.liquid.sendMedia(Store.activeJid, '', quotedMessage)
     clearQuote()
-  })
-  $('composer-input').addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && quotedMessage) clearQuote()
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage()
-    }
   })
   $('quote-cancel').addEventListener('click', clearQuote)
   $('btn-poll').addEventListener('click', openPollModal)
