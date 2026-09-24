@@ -128,6 +128,7 @@ class WhatsAppCore extends EventEmitter {
       logger,
       browser: Browsers.macOS('Liquid WhatsApp'),
       printQRInTerminal: false,
+      mobile: false,
       markOnlineOnConnect: false,
       syncFullHistory: true,
       getMessage: async () => undefined
@@ -243,6 +244,10 @@ class WhatsAppCore extends EventEmitter {
 
     await this._connect()
     await this._waitForWs()
+    // Give the WebSocket handshake a short settling window before asking
+    // WhatsApp for a new companion pairing code. This avoids early 428/515
+    // failures seen during fresh device registration.
+    await new Promise((resolve) => setTimeout(resolve, 1500))
 
     if (!this.sock) throw new Error('WhatsApp socket is unavailable')
     if (this.sock.authState?.creds?.registered) {
