@@ -219,3 +219,6 @@ html[data-theme="light"] .settings-nav{background:rgba(0,0,0,.025)}
   margin-right: 10px;
   flex: 0 0 auto;
 }
+
+.update-card { margin-top: 12px; }
+.update-card .row { margin-top: 10px; }
