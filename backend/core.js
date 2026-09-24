@@ -12,6 +12,7 @@ try { ffmpegPath = require('ffmpeg-static') } catch (_) {}
 const {
   default: makeWASocket,
   useMultiFileAuthState,
+  makeCacheableSignalKeyStore,
   DisconnectReason,
   Browsers,
   downloadMediaMessage
@@ -128,7 +129,10 @@ class WhatsAppCore extends EventEmitter {
     this.emit('connection', { connection: 'connecting' })
 
     this.sock = makeWASocket({
-      auth: state,
+      auth: {
+        creds: state.creds,
+        keys: makeCacheableSignalKeyStore(state.keys, logger)
+      },
       logger,
       browser: Browsers.macOS('Liquid WhatsApp'),
       printQRInTerminal: false,
