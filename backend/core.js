@@ -92,6 +92,7 @@ class WhatsAppCore extends EventEmitter {
     this.starred = this._readJson(this.starredFile, [])
     this.callHistory = this._readJson(this.callHistoryFile, [])
     this.activeCalls = new Map()
+    this._hydrateLocalCache()
     this._timer = setInterval(() => this._tick().catch(() => {}), 5000)
   }
 
@@ -239,6 +240,26 @@ class WhatsAppCore extends EventEmitter {
     }
 
     this.emit('connection', { connection, hasQr: !!qr })
+  }
+
+  _hydrateLocalCache() {
+    // Rebuild the chat list from the persistent message store before WhatsApp connects.
+    // This makes the app usable offline without requesting any network history.
+    for (const [jid, bucket] of this.localDb.index) {
+      let latest = null
+      for (const message of bucket.values()) {
+        if (!latest || Number(message.timestamp || 0) > Number(latest.timestamp || 0)) latest = message
+      }
+      const meta = this.chatMeta[jid] || {}
+      this.chats.set(jid, {
+        id: jid,
+        unreadCount: 0,
+        conversationTimestamp: Number(latest?.timestamp || 0),
+        lastMessage: latest || null,
+        mute: meta.muted ? -1 : 0,
+        pin: !!meta.pinned
+      })
+    }
   }
 
   async _hydrate() {
@@ -574,9 +595,15 @@ class WhatsAppCore extends EventEmitter {
   }
 
   async loadMessages(jid, limit = 80) {
-    const arr = this.messageStore.get(jid) || []
-    if (!arr.length) return this.localDb.list(jid, Math.max(1, Number(limit) || 80))
-    return arr.slice(-Math.max(1, Number(limit) || 80))
+    const take = Math.max(1, Number(limit) || 80)
+    const local = this.localDb.list(jid, Math.max(take, 500))
+    const live = this.messageStore.get(jid) || []
+    const merged = new Map()
+    for (const message of local) if (message?.id) merged.set(message.id, message)
+    for (const message of live) if (message?.id) merged.set(message.id, message)
+    const list = [...merged.values()].sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0))
+    if (list.length) this.messageStore.set(jid, list.slice(-500))
+    return list.slice(-take)
   }
 
   async searchMessages(query, jid = null) {
@@ -988,7 +1015,9 @@ class WhatsAppCore extends EventEmitter {
         muted: !!c.mute || !!this.chatMeta[c.id]?.muted,
         pinned: !!c.pin || !!this.chatMeta[c.id]?.pinned,
         archived: !!this.chatMeta[c.id]?.archived,
-        lastMessage: c.lastMessage ? this._msgDto(c.lastMessage) : null,
+        lastMessage: c.lastMessage
+          ? (c.lastMessage.jid ? c.lastMessage : this._msgDto(c.lastMessage))
+          : null,
         timestamp: Number(c.conversationTimestamp || 0)
       }))
       .sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || (b.timestamp - a.timestamp))
