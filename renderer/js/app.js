@@ -87,6 +87,7 @@ function wireEvents() {
     renderChatList()
   })
   api.on('presence', ({ jid }) => { if (jid === Store.activeJid) renderPresence() })
+  api.on('settings', (s) => { applyTheme(s?.theme || 'system') })
   api.on('open-chat', (jid) => openChat(jid))
   api.on('outbox', ({ count }) => {
     $('outbox-status').textContent = count ? `${count} message${count === 1 ? '' : 's'} queued` : 'Session saved on this Mac'
@@ -771,7 +772,7 @@ function openSettingsModal() {
     $id('set-theme').value = s.theme || 'system'
     $id('set-reduce-motion').checked = !!s.reduceMotion
     $id('set-backup').checked = s.backupEnabled !== false
-    document.documentElement.dataset.theme = s.theme || 'system'
+    applyTheme(s.theme || 'system')
 
     const ai = s.ai || {}
     $id('ai-provider').value = ai.provider || 'openai'
