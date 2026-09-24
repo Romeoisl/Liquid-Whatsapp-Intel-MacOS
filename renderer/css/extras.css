@@ -233,3 +233,19 @@ html[data-theme="light"] .settings-nav{background:rgba(0,0,0,.025)}
 .diagnostics-actions{margin-top:12px}
 .diagnostics-report{margin-top:10px;padding:12px;border:1px solid var(--glass-border);background:rgba(0,0,0,.12);border-radius:10px;max-height:260px;overflow:auto;white-space:pre-wrap;word-break:break-word;font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--text-2)}
 @media (max-width:760px){.diagnostics-grid{grid-template-columns:1fr}}
+
+
+/* v2.2 linked device session */
+.linked-device-card{padding:14px;border:1px solid var(--glass-border);background:var(--glass);border-radius:14px;margin:12px 0}
+.linked-device-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.linked-device-head strong{font-size:15px}
+.session-badge{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:700;border:1px solid var(--glass-border);white-space:nowrap}
+.session-online{color:#39b56a;background:rgba(57,181,106,.10)}
+.session-saved{color:#e7a33e;background:rgba(231,163,62,.10)}
+.session-offline{color:var(--text-3);background:rgba(128,128,128,.10)}
+.linked-device-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:14px}
+.linked-device-grid>div{padding:10px 12px;border:1px solid var(--glass-border);border-radius:10px;background:rgba(0,0,0,.04)}
+.linked-device-grid span{display:block;font-size:11px;color:var(--text-3);margin-bottom:4px}
+.linked-device-grid strong{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.linked-device-note{margin-top:12px;line-height:1.45}
+@media (max-width:760px){.linked-device-grid{grid-template-columns:1fr}}
