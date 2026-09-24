@@ -234,6 +234,7 @@ core.on('calls', (history) => forward('calls', history))
 core.on('call:state', (state) => forward('call:state', state))
 core.on('call:error', (error) => forward('call:error', error))
 core.on('call:audio', (audio) => forward('call:audio', audio))
+core.on('call:video', (video) => forward('call:video', video))
 
 core.on('notify', (items) => {
   if (core.getSettings().notifications === false || !Notification.isSupported()) return
