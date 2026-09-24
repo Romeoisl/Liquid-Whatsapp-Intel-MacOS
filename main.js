@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, dialog, Notification, Menu, shell } = require('electron')
+const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const fs = require('fs')
 const WhatsAppCore = require('./backend/core')
@@ -11,6 +12,8 @@ fs.mkdirSync(DATA_DIR, { recursive: true })
 const core = new WhatsAppCore(DATA_DIR)
 let win = null
 let backupTimer = null
+let updateCheckTimer = null
+let updateDownloadStarted = false
 
 function forward(channel, data) {
   if (win && !win.isDestroyed()) win.webContents.send('ev:' + channel, data)
@@ -211,10 +214,82 @@ function registerIpc() {
   ipcMain.handle('schedule:add', safeHandler((_e, s) => core.addSchedule(s)))
   ipcMain.handle('schedule:remove', safeHandler((_e, id) => core.removeSchedule(id)))
 
+  ipcMain.handle('update:check', safeHandler(() => checkForUpdates(true)))
+  ipcMain.handle('update:download', safeHandler(() => downloadUpdate()))
+  ipcMain.handle('update:install', safeHandler(() => installUpdate()))
+
   ipcMain.handle('external:open', safeHandler((_e, url) => {
     if (!/^https?:\/\//i.test(String(url))) throw new Error('Only http(s) links can be opened')
     return shell.openExternal(String(url))
   }))
+}
+
+function setupAutoUpdater() {
+  if (!app.isPackaged || process.platform !== 'darwin' || process.arch !== 'x64') return
+
+  autoUpdater.autoDownload = false
+  autoUpdater.autoInstallOnAppQuit = false
+  autoUpdater.autoInstallEvent = 'manual'
+  autoUpdater.allowPrerelease = false
+  autoUpdater.fullChangelog = false
+
+  autoUpdater.on('checking-for-update', () => forward('update:checking', { version: app.getVersion() }))
+  autoUpdater.on('update-available', (info) => {
+    updateDownloadStarted = false
+    forward('update:available', {
+      version: info.version,
+      releaseName: info.releaseName || info.version,
+      releaseNotes: info.releaseNotes || null
+    })
+  })
+  autoUpdater.on('update-not-available', (info) => {
+    forward('update:not-available', { version: info?.version || app.getVersion() })
+  })
+  autoUpdater.on('download-progress', (progress) => {
+    forward('update:progress', {
+      percent: Number(progress.percent) || 0,
+      transferred: Number(progress.transferred) || 0,
+      total: Number(progress.total) || 0,
+      bytesPerSecond: Number(progress.bytesPerSecond) || 0
+    })
+  })
+  autoUpdater.on('update-downloaded', (info) => {
+    updateDownloadStarted = false
+    forward('update:downloaded', {
+      version: info.version,
+      releaseName: info.releaseName || info.version
+    })
+  })
+  autoUpdater.on('update-cancelled', () => {
+    updateDownloadStarted = false
+    forward('update:cancelled', {})
+  })
+  autoUpdater.on('error', (error) => {
+    updateDownloadStarted = false
+    console.warn('[updater]', error?.message || error)
+    forward('update:error', { message: error?.message || String(error) })
+  })
+}
+
+async function checkForUpdates(manual = false) {
+  if (!app.isPackaged || process.platform !== 'darwin' || process.arch !== 'x64') {
+    if (manual) forward('update:error', { message: 'Updates are available only for packaged Intel macOS builds.' })
+    return null
+  }
+  return autoUpdater.checkForUpdates()
+}
+
+async function downloadUpdate() {
+  if (updateDownloadStarted) return { ok: true, alreadyStarted: true }
+  updateDownloadStarted = true
+  await autoUpdater.downloadUpdate()
+  return { ok: true }
+}
+
+function installUpdate() {
+  if (!app.isPackaged) throw new Error('Updates are only available in the packaged app')
+  autoUpdater.quitAndInstall(false, true)
+  return { ok: true }
 }
 
 core.on('connection', (u) => forward('connection', u))
@@ -260,10 +335,20 @@ app.whenReady().then(() => {
   buildMenu()
   registerIpc()
   createWindow()
+  setupAutoUpdater()
   // Do not create an anonymous WhatsApp socket on the login screen.
   // The pairing flow creates its own socket only after the user submits a number.
   if (core.hasSession()) {
     core.start().catch((e) => console.error('[core] start failed:', e.message))
+  }
+
+  // Update checks are intentionally silent when nothing is available.
+  // The first check waits until startup settles, then repeats every 6 hours.
+  if (app.isPackaged && process.platform === 'darwin' && process.arch === 'x64') {
+    setTimeout(() => checkForUpdates(false).catch((e) => console.warn('[updater]', e.message)), 10000)
+    updateCheckTimer = setInterval(() => {
+      checkForUpdates(false).catch((e) => console.warn('[updater]', e.message))
+    }, 6 * 60 * 60 * 1000)
   }
   // Backups are intentionally lazy. The old implementation serialized the
   // entire local message database synchronously 5 seconds after startup,
@@ -295,5 +380,6 @@ app.on('activate', () => {
 
 app.on('before-quit', () => {
   if (backupTimer) clearInterval(backupTimer)
+  if (updateCheckTimer) clearInterval(updateCheckTimer)
   try { core.dispose() } catch (_) {}
 })
