@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Notification, Menu, shell, systemPreferences } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, Notification, Menu, shell, systemPreferences, safeStorage } = require('electron')
 const os = require('os')
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
@@ -86,6 +86,28 @@ async function chooseFile(title, filters) {
     filters
   })
   return res.canceled || !res.filePaths.length ? null : res.filePaths[0]
+}
+
+function getAiSecret() {
+  const encoded = core.getSettings().ai?.keyEncrypted || ''
+  if (encoded) {
+    try {
+      return safeStorage.decryptString(Buffer.from(encoded, 'base64'))
+    } catch (_) {
+      return ''
+    }
+  }
+  // One-time migration path for versions that stored the key in plaintext.
+  const legacy = core.getAiSecret()
+  if (!legacy) return ''
+  if (safeStorage.isEncryptionAvailable()) {
+    try {
+      const encrypted = safeStorage.encryptString(legacy).toString('base64')
+      core.setAiEncryptedSecret(encrypted).catch(() => {})
+      return legacy
+    } catch (_) {}
+  }
+  return legacy
 }
 
 function registerIpc() {
@@ -195,6 +217,71 @@ function registerIpc() {
   ipcMain.handle('privacy:set', safeHandler((_e, key, value) => core.setPrivacy(key, value)))
   ipcMain.handle('settings:get', () => core.getSettings())
   ipcMain.handle('settings:set', safeHandler((_e, patch) => core.setSettings(patch)))
+  ipcMain.handle('ai:set-key', safeHandler(async (_e, key) => {
+    const value = String(key || '').trim()
+    if (!value) return false
+    if (!safeStorage.isEncryptionAvailable()) {
+      throw new Error('macOS secure storage is unavailable. API key was not saved.')
+    }
+    const encrypted = safeStorage.encryptString(value).toString('base64')
+    await core.setAiEncryptedSecret(encrypted)
+    return true
+  }))
+
+  ipcMain.handle('ai:call', safeHandler(async (_e, messages) => {
+    const key = getAiSecret()
+    if (!key) throw new Error('Set your API key in Settings → AI first')
+    const ai = core.getSettings().ai || {}
+    const provider = ai.provider || 'openai'
+    const model = ai.model || (provider === 'openai' ? 'gpt-4o-mini' : provider === 'anthropic' ? 'claude-3-5-sonnet' : 'gemini-1.5-flash')
+    let url = ''
+    let headers = { 'Content-Type': 'application/json' }
+    let body = {}
+
+    if (provider === 'openai') {
+      url = 'https://api.openai.com/v1/chat/completions'
+      headers.Authorization = 'Bearer ' + key
+      body = { model, messages }
+    } else if (provider === 'anthropic') {
+      url = 'https://api.anthropic.com/v1/messages'
+      headers['x-api-key'] = key
+      headers['anthropic-version'] = '2023-06-01'
+      body = { model, max_tokens: 1024, messages }
+    } else if (provider === 'gemini') {
+      url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`
+      body = { contents: (messages || []).map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })) }
+    } else {
+      throw new Error('Unsupported AI provider')
+    }
+
+    const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data?.error?.message || data?.message || `AI API error: ${response.status}`)
+    const text = provider === 'openai'
+      ? data.choices?.[0]?.message?.content
+      : provider === 'anthropic'
+        ? data.content?.[0]?.text
+        : data.candidates?.[0]?.content?.parts?.[0]?.text
+    if (!text) throw new Error('AI provider returned no text')
+    return { text }
+  }))
+
+  ipcMain.handle('ai:image', safeHandler(async (_e, prompt) => {
+    const key = getAiSecret()
+    const ai = core.getSettings().ai || {}
+    if (ai.provider !== 'openai' || !key) {
+      throw new Error('Image generation requires an OpenAI API key with the OpenAI provider selected')
+    }
+    const response = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+      body: JSON.stringify({ prompt: String(prompt || ''), n: 1, size: '512x512' })
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(data?.error?.message || `Image API error (${response.status})`)
+    return data.data?.[0]?.url || ''
+  }))
+
   ipcMain.handle('diagnostics:get', async () => {
     const totalMem = os.totalmem()
     const freeMem = os.freemem()
