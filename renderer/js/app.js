@@ -77,6 +77,8 @@ let callAudioContext = null
 let callAudioNextTime = 0
 let callVideoFrameBusy = false
 let quotedMessage = null
+let pingTimer = null
+let pingRequestInFlight = false
 
 function wireEvents() {
   api.on('connection', (u) => {
@@ -530,6 +532,7 @@ function renderChatList() {
 
 function openChat(jid) {
   clearQuote()
+  stopChatPing()
   Store.activeJid = jid
   window.liquid.setActive(jid)
   $('empty-state').classList.add('hidden')
@@ -541,12 +544,96 @@ function openChat(jid) {
   $('chat-avatar').textContent = ui.initials(name)
   $('btn-mention-all').classList.toggle('hidden', !jid.endsWith('@g.us'))
   renderPresence()
+  updateChatPing()
   renderMessages()
+  startChatPing()
   window.liquid.loadChat(jid).then((msgs) => {
     Store.messages.set(jid, msgs)
     scheduleMessageRender()
     scheduleChatRender()
   }).catch(() => {})
+}
+
+function stopChatPing() {
+  if (pingTimer) clearInterval(pingTimer)
+  pingTimer = null
+  pingRequestInFlight = false
+  const el = $('chat-ping')
+  if (el) {
+    el.classList.add('hidden')
+    el.innerHTML = ''
+  }
+}
+
+function isPrivateChat(jid) {
+  return !!jid && !jid.endsWith('@g.us') && jid !== 'status@broadcast'
+}
+
+function pingSignalLevel(ms) {
+  if (!Number.isFinite(ms)) return 0
+  if (ms <= 80) return 4
+  if (ms <= 150) return 3
+  if (ms <= 250) return 2
+  return 1
+}
+
+async function updateChatPing() {
+  const jid = Store.activeJid
+  const el = $('chat-ping')
+  if (!el || !isPrivateChat(jid)) {
+    if (el) {
+      el.classList.add('hidden')
+      el.innerHTML = ''
+    }
+    return
+  }
+  if (pingRequestInFlight) return
+  pingRequestInFlight = true
+  try {
+    const result = await window.liquid.networkPing()
+    if (Store.activeJid !== jid || !isPrivateChat(jid)) return
+    const ms = Number(result && result.ms)
+    const level = pingSignalLevel(ms)
+    el.innerHTML = ''
+    for (let i = 1; i <= 4; i++) {
+      const bar = document.createElement('span')
+      bar.className = 'ping-bar' + (i <= level ? ' active' : '')
+      el.appendChild(bar)
+    }
+    const label = Number.isFinite(ms) ? ' ' + Math.round(ms) + ' ms' : ' —'
+    el.title = Number.isFinite(ms) ? 'Network ping: ' + Math.round(ms) + ' ms' : 'Network ping unavailable'
+    el.setAttribute('aria-label', el.title)
+    const text = document.createElement('span')
+    text.className = 'ping-ms'
+    text.textContent = label
+    el.appendChild(text)
+    el.classList.remove('hidden')
+  } catch (_) {
+    if (Store.activeJid === jid && isPrivateChat(jid)) {
+      el.innerHTML = ''
+      for (let i = 1; i <= 4; i++) {
+        const bar = document.createElement('span')
+        bar.className = 'ping-bar'
+        el.appendChild(bar)
+      }
+      el.title = 'Network ping unavailable'
+      el.setAttribute('aria-label', el.title)
+      const text = document.createElement('span')
+      text.className = 'ping-ms'
+      text.textContent = ' —'
+      el.appendChild(text)
+      el.classList.remove('hidden')
+    }
+  } finally {
+    pingRequestInFlight = false
+  }
+}
+
+function startChatPing() {
+  stopChatPing()
+  if (!isPrivateChat(Store.activeJid)) return
+  updateChatPing()
+  pingTimer = setInterval(updateChatPing, 5000)
 }
 
 function renderPresence() {
