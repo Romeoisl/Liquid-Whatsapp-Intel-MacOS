@@ -9,6 +9,7 @@ const api = {
   async init() {
     const boot = await window.liquid.init()
     Store.user = boot.user
+    Store.setChats(boot.chats || [])
     Store.settings = boot.settings || {}
     Store.schedules = boot.schedules || []
     return boot
