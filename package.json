@@ -1,22 +1,24 @@
 {
   "name": "liquid-whatsapp",
   "version": "2.2.2",
-  "description": "Liquid WhatsApp desktop client for macOS Catalina and Intel Macs — v2.2.2 Liquid Glass with FFmpeg voice notes and Catalina Intel packaging",
+  "description": "Liquid WhatsApp desktop client for macOS Catalina and Intel Macs — v2.2.2 Liquid Glass with real WhatsApp VoIP/WASM calling",
   "main": "main.js",
   "author": "Gerald(Mateo DEV)",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder --mac dmg zip --x64 --publish never",
-    "check": "node --check main.js && node --check preload.js && node --check backend/core.js && node --check backend/local-store.js && node --check renderer/js/store.js && node --check renderer/js/api.js && node --check renderer/js/ui.js && node --check renderer/js/app.js",
+    "check": "node --check main.js && node --check preload.js && node --check backend/core.js && node --check backend/local-store.js && node --check renderer/js/store.js && node --check renderer/js/api.js && node --check renderer/js/ui.js && node --check renderer/js/app.js && node --check scripts/patch-voip-capture.js",
     "build:catalina": "npm run check && electron-builder --mac dmg zip --x64 --publish never",
     "build:app": "npm run check && electron-builder --mac dir --x64",
-    "check:renderer": "node --check renderer/js/store.js && node --check renderer/js/api.js && node --check renderer/js/ui.js && node --check renderer/js/app.js"
+    "check:renderer": "node --check renderer/js/store.js && node --check renderer/js/api.js && node --check renderer/js/ui.js && node --check renderer/js/app.js",
+    "postinstall": "node scripts/patch-voip-capture.js"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "6.7.24",
     "pino": "^9.0.0",
-    "ffmpeg-static": "5.2.0"
+    "ffmpeg-static": "5.2.0",
+    "@innovatorssoft/baileys": "7.4.7",
+    "@roamhq/wrtc": "0.10.0"
   },
   "devDependencies": {
     "electron": "32.3.3",
