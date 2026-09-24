@@ -262,25 +262,24 @@ app.whenReady().then(() => {
   if (core.hasSession()) {
     core.start().catch((e) => console.error('[core] start failed:', e.message))
   }
-  backupTimer = setInterval(() => {
+  // Backups are intentionally lazy. The old implementation serialized the
+  // entire local message database synchronously 5 seconds after startup,
+  // which could freeze an older Intel Mac.
+  backupTimer = setInterval(async () => {
     const settings = core.getSettings()
     if (settings.backupEnabled === false) return
     try {
       const dir = path.join(DATA_DIR, 'backups')
-      fs.mkdirSync(dir, { recursive: true })
+      await fs.promises.mkdir(dir, { recursive: true })
       const file = path.join(dir, 'latest.json')
       const intervalMs = Math.max(1, Number(settings.backupIntervalHours) || 24) * 60 * 60 * 1000
       const stale = !fs.existsSync(file) || (Date.now() - fs.statSync(file).mtimeMs > intervalMs)
-      if (stale) fs.writeFileSync(file, JSON.stringify(core.exportLocalData(), null, 2), 'utf8')
+      if (stale) {
+        const payload = JSON.stringify(core.exportLocalData())
+        await fs.promises.writeFile(file, payload, 'utf8')
+      }
     } catch (e) { console.warn('[backup]', e.message) }
   }, 60 * 60 * 1000)
-  setTimeout(() => {
-    try {
-      const dir = path.join(DATA_DIR, 'backups')
-      fs.mkdirSync(dir, { recursive: true })
-      fs.writeFileSync(path.join(dir, 'latest.json'), JSON.stringify(core.exportLocalData(), null, 2), 'utf8')
-    } catch (_) {}
-  }, 5000)
 })
 
 app.on('window-all-closed', () => {
