@@ -68,6 +68,7 @@ contextBridge.exposeInMainWorld('liquid', {
   removeSchedule: (id) => invoke('schedule:remove', id),
   copyText: (t) => clipboard.writeText(String(t)),
   callAction: (action, callId, targetJid, isVideo) => invoke('call:action', action, callId, targetJid, isVideo),
+  openWhatsAppWebCall: (targetJid, isVideo) => invoke('whatsapp-web:call', targetJid, !!isVideo),
   openExternal: (url) => invoke('external:open', url),
   checkForUpdates: () => invoke('update:check'),
   downloadUpdate: () => invoke('update:download'),
