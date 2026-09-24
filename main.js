@@ -227,11 +227,21 @@ function registerIpc() {
 function setupAutoUpdater() {
   if (!app.isPackaged || process.platform !== 'darwin' || process.arch !== 'x64') return
 
+  // Never download an update automatically: the user must approve the data usage.
   autoUpdater.autoDownload = false
   autoUpdater.autoInstallOnAppQuit = false
   autoUpdater.autoInstallEvent = 'manual'
   autoUpdater.allowPrerelease = false
   autoUpdater.fullChangelog = false
+
+  // Keep differential downloads enabled. GitHub's release layout can otherwise
+  // make the updater look for the previous blockmap under the latest release.
+  // Point it at the release matching the currently installed version so the
+  // updater can compare the old installer blocks and download only the blocks
+  // it needs when a valid blockmap is available.
+  autoUpdater.disableDifferentialDownload = false
+  autoUpdater.previousBlockmapBaseUrlOverride =
+    `https://github.com/Romeoisl/Whatsapp-UNOFFICIAL-/releases/download/v${app.getVersion()}/`
 
   autoUpdater.on('checking-for-update', () => forward('update:checking', { version: app.getVersion() }))
   autoUpdater.on('update-available', (info) => {
