@@ -1,4 +1,5 @@
-const { app, BrowserWindow, ipcMain, dialog, Notification, Menu, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, Notification, Menu, shell, systemPreferences } = require('electron')
+const os = require('os')
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const fs = require('fs')
@@ -193,6 +194,48 @@ function registerIpc() {
   ipcMain.handle('privacy:set', safeHandler((_e, key, value) => core.setPrivacy(key, value)))
   ipcMain.handle('settings:get', () => core.getSettings())
   ipcMain.handle('settings:set', safeHandler((_e, patch) => core.setSettings(patch)))
+  ipcMain.handle('diagnostics:get', async () => {
+    const totalMem = os.totalmem()
+    const freeMem = os.freemem()
+    let storage = null
+    try {
+      const stat = fs.statfsSync(app.getPath('userData'))
+      storage = { free: Number(stat.bavail) * Number(stat.bsize), total: Number(stat.blocks) * Number(stat.bsize) }
+    } catch (_) {}
+
+    let gpu = null
+    try {
+      gpu = { featureStatus: app.getGPUFeatureStatus(), info: await app.getGPUInfo('basic') }
+    } catch (_) {}
+
+    const permissions = {}
+    for (const type of ['microphone', 'camera']) {
+      try { permissions[type] = systemPreferences.getMediaAccessStatus(type) } catch (_) { permissions[type] = 'unknown' }
+    }
+
+    const metrics = app.getAppMetrics()
+    const cpu = metrics.reduce((sum, item) => sum + (Number(item.cpu?.percentCPUUsage) || 0), 0)
+    const privateMemory = metrics.reduce((sum, item) => sum + (Number(item.memory?.private) || 0), 0)
+
+    return {
+      app: {
+        name: app.getName(), version: app.getVersion(), electron: process.versions.electron,
+        chrome: process.versions.chrome, node: process.versions.node, packaged: app.isPackaged,
+        platform: process.platform, arch: process.arch
+      },
+      system: {
+        os: process.getSystemVersion(), release: os.release(), cpu: os.cpus()[0]?.model || 'Unknown',
+        cores: os.cpus().length, memory: { total: totalMem, free: freeMem, used: Math.max(0, totalMem - freeMem) },
+        storage, uptime: os.uptime()
+      },
+      process: { cpuPercent: cpu, privateMemory, processCount: metrics.length },
+      permissions,
+      gpu,
+      connection: { hasSession: core.hasSession(), connected: core.conn?.connection === 'open' },
+      performance: { mode: core.getSettings().performanceMode || 'auto' }
+    }
+  })
+
   ipcMain.handle('local:info', () => core.localDatabaseInfo())
   ipcMain.handle('local:clear-backups', safeHandler(() => core.clearBackups()))
   ipcMain.handle('calls:history', () => core.getCallHistory())
