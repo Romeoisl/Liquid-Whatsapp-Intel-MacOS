@@ -440,26 +440,26 @@ function wireStaticUI() {
     Store.typingTimers.set(Store.activeJid, setTimeout(() => window.liquid.typing(Store.activeJid, false), 2000))
   })
 
-  // Wire up the banner overlay acceptance/rejection mechanics
-  $('btnBannerAccept').addEventListener('click', async () => {
-    $('liquidCallBanner').classList.add('liquid-banner-hidden')
-    try { await window.liquid.callAction('accept', activeCallId, activeCallJid, activeCallVideo) } catch (e) { ui.toast(e.message || 'Calls are not supported yet') }
-  })
-  $('btnBannerDecline').addEventListener('click', async () => {
-    $('liquidCallBanner').classList.add('liquid-banner-hidden')
-    try { await window.liquid.callAction('reject', activeCallId, activeCallJid, activeCallVideo) } catch (_) {}
-  })
-
-  // Hook up your inline header call options to fire outbound calling window popups
+  // Open the real WhatsApp Web calling stack in a dedicated persistent window.
+  // WhatsApp Web performs the actual call/media handling; Liquid WhatsApp does not
+  // attempt to fabricate or reimplement WhatsApp's encrypted call transport.
   $('headerVoiceCallBtn').addEventListener('click', async () => {
-    if (!Store.activeJid) return
-    const customOutboundId = 'out_' + Date.now()
-    try { await window.liquid.callAction('start', customOutboundId, Store.activeJid, false) } catch (e) { ui.toast(e.message || 'Calls are not supported yet') }
+    if (!Store.activeJid || Store.activeJid.endsWith('@g.us')) return
+    try {
+      await window.liquid.openWhatsAppWebCall(Store.activeJid, false)
+      ui.toast('WhatsApp Web opened for this chat. Use its call button to start the call.')
+    } catch (e) {
+      ui.toast(e.message || 'Could not open WhatsApp Web calling')
+    }
   })
   $('headerVideoCallBtn').addEventListener('click', async () => {
-    if (!Store.activeJid) return
-    const customOutboundId = 'out_' + Date.now()
-    try { await window.liquid.callAction('start', customOutboundId, Store.activeJid, true) } catch (e) { ui.toast(e.message || 'Calls are not supported yet') }
+    if (!Store.activeJid || Store.activeJid.endsWith('@g.us')) return
+    try {
+      await window.liquid.openWhatsAppWebCall(Store.activeJid, true)
+      ui.toast('WhatsApp Web opened for this chat. Use its video button to start the call.')
+    } catch (e) {
+      ui.toast(e.message || 'Could not open WhatsApp Web calling')
+    }
   })
 
   document.addEventListener('keydown', (e) => {
