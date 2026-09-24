@@ -92,6 +92,7 @@ function registerIpc() {
   ipcMain.handle('app:init', () => ({
     hasSession: core.hasSession(),
     user: core.userInfo(),
+    chats: core.chatList(),
     settings: core.getSettings(),
     schedules: core.getSchedules(),
     starred: core.getStarred()
