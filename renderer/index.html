@@ -274,7 +274,26 @@
 
       <div class="settings-section" data-section-panel="account">
         <h2>Account</h2>
-        <div class="settings-card"><strong>Linked session</strong><p class="hint">Your encrypted WhatsApp session is stored locally on this Mac. Use Log out from the main window to unlink this client.</p></div>
+        <div class="linked-device-card">
+          <div class="linked-device-head">
+            <div>
+              <strong>Linked device</strong>
+              <div id="session-status-line" class="hint">Checking session…</div>
+            </div>
+            <span id="session-status-badge" class="session-badge">Checking</span>
+          </div>
+          <div class="linked-device-grid">
+            <div><span>Phone</span><strong id="session-phone">—</strong></div>
+            <div><span>Paired on this Mac</span><strong id="session-linked-at">—</strong></div>
+            <div><span>Last connected</span><strong id="session-last-active">—</strong></div>
+            <div><span>Session storage</span><strong id="session-storage">—</strong></div>
+          </div>
+          <p class="hint linked-device-note">The session credentials are stored locally so Liquid WhatsApp can reconnect without asking you to pair again. This date is recorded by Liquid WhatsApp and is not WhatsApp's server-side device-link timestamp.</p>
+        </div>
+        <div class="settings-card">
+          <strong>WhatsApp device inactivity</strong>
+          <p class="hint">WhatsApp currently says linked devices are automatically disconnected after 30 days of inactivity. It also says the primary phone should be used at least every 14 days to keep linked devices connected.</p>
+        </div>
         <button id="settings-logout" class="btn danger">Log out of Liquid WhatsApp</button>
       </div>
 
