@@ -64,6 +64,7 @@ class WhatsAppCore extends EventEmitter {
     this.chatMeta = this._readJson(this.chatMetaFile, {})
     this.sock = null
     this.connection = 'idle'
+    this.pendingPairingAt = null
     this.activeJid = null
     this.chats = new Map()
     this.contacts = new Map()
@@ -84,7 +85,8 @@ class WhatsAppCore extends EventEmitter {
       showPreviews: true,
       reduceMotion: false,
       backupEnabled: true,
-      backupIntervalHours: 24
+      backupIntervalHours: 24,
+      linkedSession: { linkedAt: null, lastActiveAt: null, phone: null }
     })
     this.schedules = this._readJson(this.scheduleFile, [])
     this.starred = this._readJson(this.starredFile, [])
@@ -195,7 +197,19 @@ class WhatsAppCore extends EventEmitter {
     this.connection = connection || 'idle'
 
     if (connection === 'open') {
-      this.emit('connection', { connection: 'open', user: this.userInfo() })
+      const user = this.userInfo()
+      const existing = this.settings.linkedSession || {}
+      const linkedAt = existing.linkedAt || this.pendingPairingAt || null
+      const lastActiveAt = new Date().toISOString()
+      this.pendingPairingAt = null
+      this.setSettings({
+        linkedSession: {
+          linkedAt,
+          lastActiveAt,
+          phone: user?.number || existing.phone || null
+        }
+      }).catch(() => {})
+      this.emit('connection', { connection: 'open', user })
       this._hydrate().catch(() => {})
       this._flushOutbox().catch(() => {})
       this.sock.sendPresenceUpdate('available').catch(() => {})
@@ -203,6 +217,9 @@ class WhatsAppCore extends EventEmitter {
     }
 
     if (connection === 'close') {
+      const existing = this.settings.linkedSession || {}
+      this.settings.linkedSession = { ...existing, lastActiveAt: new Date().toISOString() }
+      this.setSettings({ linkedSession: this.settings.linkedSession }).catch(() => {})
       const status = lastDisconnect?.error?.output?.statusCode ?? null
       const loggedOut = status === DisconnectReason.loggedOut
       this.emit('connection', { connection: 'close', loggedOut })
@@ -265,6 +282,7 @@ class WhatsAppCore extends EventEmitter {
     }
 
     await this._connect()
+    this.pendingPairingAt = new Date().toISOString()
     await this._waitForWs()
     // Give the WebSocket handshake a short settling window before asking
     // WhatsApp for a new companion pairing code. This avoids early 428/515
@@ -1061,6 +1079,20 @@ class WhatsAppCore extends EventEmitter {
 
   _readJson(file, fallback) {
     try { return JSON.parse(fs.readFileSync(file, 'utf8')) } catch (_) { return fallback }
+  }
+
+  getLinkedSession() {
+    const meta = this.settings.linkedSession || {}
+    const user = this.userInfo()
+    return {
+      connection: this.connection,
+      hasSession: this.hasSession(),
+      savedLocally: this.hasSession(),
+      phone: user?.number || meta.phone || null,
+      name: user?.name || null,
+      linkedAt: meta.linkedAt || null,
+      lastActiveAt: meta.lastActiveAt || null
+    }
   }
 
   getSettings() { return this.settings }
