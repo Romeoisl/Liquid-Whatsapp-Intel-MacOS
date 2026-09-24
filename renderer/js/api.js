@@ -1,5 +1,5 @@
 const api = {
-  handlers: { 
+  subscribed: false,\n  handlers: { 
     connection: [], chats: [], messages: [], 
     presence: [], settings: [], schedules: [], 
     call: [], outbox: []
