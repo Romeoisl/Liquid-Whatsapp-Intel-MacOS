@@ -90,6 +90,7 @@ class WhatsAppCore extends EventEmitter {
 
   dispose() {
     clearInterval(this._timer)
+    clearTimeout(this._legacyPersistTimer)
     if (this.connectTimer) clearTimeout(this.connectTimer)
     try { this.sock?.ws?.close?.() } catch (_) {}
     this.sock = null
@@ -130,7 +131,7 @@ class WhatsAppCore extends EventEmitter {
       printQRInTerminal: false,
       mobile: false,
       markOnlineOnConnect: false,
-      syncFullHistory: true,
+      // Full-history sync is extremely expensive on older Intel Macs.\n      // Messages can still be loaded from the local store and WhatsApp will\n      // deliver new/updated messages normally.\n      syncFullHistory: false,
       getMessage: async () => undefined
     })
 
@@ -603,8 +604,15 @@ class WhatsAppCore extends EventEmitter {
     const arr = (this.messageStore.get(jid) || []).map(m => ({ ...m, raw: undefined }))
     this.localMessages[jid] = arr
     this.localDb.upsertMany(jid, arr)
-    // Keep the legacy JSON snapshot for migration/backwards compatibility.
-    fs.writeFileSync(this.localMessagesFile, JSON.stringify(this.localMessages, null, 2))
+
+    // The legacy JSON file is only for migration/backwards compatibility.
+    // Never rewrite the entire message database synchronously for every event.
+    clearTimeout(this._legacyPersistTimer)
+    this._legacyPersistTimer = setTimeout(() => {
+      try {
+        fs.writeFileSync(this.localMessagesFile, JSON.stringify(this.localMessages))
+      } catch (_) {}
+    }, 1500)
   }
 
   _saveOutbox() {
