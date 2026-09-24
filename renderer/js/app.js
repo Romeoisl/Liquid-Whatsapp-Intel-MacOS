@@ -953,6 +953,41 @@ function openSettingsModal() {
     const user = Store.user || {}
     const $id = (id) => document.getElementById(id)
 
+    const formatSessionDate = (value) => {
+      if (!value) return 'Not recorded'
+      const d = new Date(value)
+      if (Number.isNaN(d.getTime())) return 'Unknown'
+      return d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+    }
+    const formatRelative = (value) => {
+      if (!value) return 'Not recorded'
+      const ms = Date.now() - new Date(value).getTime()
+      if (!Number.isFinite(ms) || ms < 0) return 'Just now'
+      const mins = Math.floor(ms / 60000)
+      if (mins < 1) return 'Just now'
+      if (mins < 60) return `${mins} min ago`
+      const hours = Math.floor(mins / 60)
+      if (hours < 24) return `${hours} hr ago`
+      return `${Math.floor(hours / 24)} day(s) ago`
+    }
+    const refreshLinkedSession = async () => {
+      try {
+        const info = await window.liquid.sessionInfo()
+        const open = info?.connection === 'open'
+        const saved = !!info?.savedLocally
+        $id('session-status-line').textContent = open ? 'Connected and ready to reconnect' : saved ? 'Session saved locally; currently offline' : 'No linked session saved'
+        const badge = $id('session-status-badge')
+        badge.textContent = open ? 'Connected' : saved ? 'Saved' : 'Not linked'
+        badge.className = 'session-badge ' + (open ? 'session-online' : saved ? 'session-saved' : 'session-offline')
+        $id('session-phone').textContent = info?.phone ? '+' + String(info.phone).replace(/^\+/, '') : '—'
+        $id('session-linked-at').textContent = formatSessionDate(info?.linkedAt)
+        $id('session-last-active').textContent = info?.lastActiveAt ? formatRelative(info.lastActiveAt) : 'Not recorded'
+        $id('session-storage').textContent = saved ? 'Saved locally' : 'Not present'
+      } catch (e) {
+        $id('session-status-line').textContent = 'Could not read session status'
+      }
+    }
+
     const sections = [...document.querySelectorAll('.settings-section')]
     const tabs = [...document.querySelectorAll('.settings-tab')]
     const selectSection = (name) => {
@@ -961,6 +996,7 @@ function openSettingsModal() {
     }
     tabs.forEach(tab => tab.addEventListener('click', () => selectSection(tab.dataset.section)))
 
+    refreshLinkedSession()
     const diagGrid = $id('diagnostics-grid')
     const diagReport = $id('diagnostics-report')
     let lastDiagnosticReport = ''
