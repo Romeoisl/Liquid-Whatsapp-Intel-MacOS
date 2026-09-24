@@ -53,7 +53,11 @@
           ]
         }
       ],
-      "minimumSystemVersion": "10.15.0"
+      "minimumSystemVersion": "10.15.0",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Liquid WhatsApp uses the microphone to record voice notes.",
+        "NSCameraUsageDescription": "Liquid WhatsApp uses the camera for supported calling features."
+      }
     },
     "asarUnpack": [
       "node_modules/ffmpeg-static/**"
