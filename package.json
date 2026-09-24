@@ -1,7 +1,7 @@
 {
   "name": "liquid-whatsapp",
-  "version": "2.2.3",
-  "description": "Liquid WhatsApp desktop client for macOS Catalina and Intel Macs — v2.2.3 Liquid Glass with real WhatsApp VoIP/WASM calling",
+  "version": "2.2.4",
+  "description": "Liquid WhatsApp desktop client for macOS Catalina and Intel Macs — v2.2.4 Liquid Glass with real WhatsApp VoIP/WASM calling",
   "main": "main.js",
   "author": "Gerald(Mateo DEV)",
   "license": "MIT",
