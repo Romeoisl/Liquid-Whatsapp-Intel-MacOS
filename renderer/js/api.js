@@ -2,7 +2,7 @@ const api = {
   subscribed: false,
   handlers: { 
     connection: [], chats: [], messages: [], 
-    presence: [], settings: [], schedules: [], 
+    presence: [], settings: [], schedules: [], calls: [],
     call: [], outbox: []
   },
 
@@ -47,6 +47,7 @@ const api = {
     })
     window.liquid.on('settings', (s) => { Store.settings = s; this._emit('settings', s) })
     window.liquid.on('schedules', (s) => { Store.schedules = s; this._emit('schedules', s) })
+    window.liquid.on('calls', (history) => this._emit('calls', history))
     window.liquid.onOpenChat((jid) => this._emit('open-chat', jid))
 
     // Securely listen for secure inbound call network rings passing through the bridge wrapper
