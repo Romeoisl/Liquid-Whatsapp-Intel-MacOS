@@ -5,7 +5,7 @@ async function init() {
   api.subscribe()
   wireEvents()
   wireStaticUI()
-  document.documentElement.dataset.theme = boot.settings?.theme || 'system'
+  applyTheme(boot.settings?.theme || 'system')
   if (boot.hasSession) enterApp()
   else showLogin()
 }
@@ -308,7 +308,7 @@ function wireStaticUI() {
   document.addEventListener('click', ui.hideCtx)
 }
 
-function filteredChats() {
+function applyTheme(theme) {\n  const value = theme || 'system'\n  const dark = value === 'dark' || (value === 'system' && window.matchMedia?.('(prefers-color-scheme: dark)').matches)\n  document.documentElement.dataset.theme = value\n  document.body.classList.toggle('dark', !!dark)\n  document.body.classList.toggle('light', !dark)\n}\n\nfunction filteredChats() {
   const q = Store.search.toLowerCase()
   let list = Store.chats
   if (Store.filter === 'unread') list = list.filter((c) => c.unread > 0)
