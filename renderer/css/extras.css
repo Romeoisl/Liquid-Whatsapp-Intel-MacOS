@@ -208,3 +208,14 @@ html[data-theme="light"] .settings-nav{background:rgba(0,0,0,.025)}
 #voice-level-fill{display:block;width:8%;height:100%;border-radius:999px;background:var(--accent);transition:width .08s linear}
 #voice-timer{font-variant-numeric:tabular-nums;font-size:12px;min-width:32px}
 @keyframes voicePulse{50%{transform:scale(1.06);opacity:.72}}
+
+
+.call-remote-video {
+  width: 160px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #000;
+  margin-right: 10px;
+  flex: 0 0 auto;
+}
