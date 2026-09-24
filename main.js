@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, Notification, Menu, shell, systemPr
 const os = require('os')
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
+const { inspectIntegrity, shouldBlock } = require('./backend/integrity')
 const https = require('https')
 const fs = require('fs')
 const WhatsAppCore = require('./backend/core')
@@ -17,6 +18,7 @@ let backupTimer = null
 let updateCheckTimer = null
 let updateDownloadStarted = false
 let webCallWin = null
+let latestAvailableVersion = null
 
 function forward(channel, data) {
   if (win && !win.isDestroyed()) win.webContents.send('ev:' + channel, data)
@@ -414,6 +416,8 @@ function registerIpc() {
     return data.data?.[0]?.url || ''
   }))
 
+  ipcMain.handle('integrity:get', () => getIntegrityStatus())
+
   ipcMain.handle('diagnostics:get', async () => {
     const totalMem = os.totalmem()
     const freeMem = os.freemem()
@@ -438,6 +442,7 @@ function registerIpc() {
     const privateMemory = metrics.reduce((sum, item) => sum + (Number(item.memory?.private) || 0), 0)
 
     return {
+      integrity: getIntegrityStatus(),
       app: {
         name: app.getName(), version: app.getVersion(), electron: process.versions.electron,
         chrome: process.versions.chrome, node: process.versions.node, packaged: app.isPackaged,
@@ -488,6 +493,16 @@ function registerIpc() {
   }))
 }
 
+function getIntegrityStatus() {
+  const integrity = inspectIntegrity(app)
+  if (integrity.status === 'official' && latestAvailableVersion && latestAvailableVersion !== app.getVersion()) {
+    integrity.status = 'older'
+    integrity.availableVersion = latestAvailableVersion
+    integrity.reason = 'A newer signed release is available.'
+  }
+  return integrity
+}
+
 function setupAutoUpdater() {
   if (!app.isPackaged || process.platform !== 'darwin' || process.arch !== 'x64') return
 
@@ -505,10 +520,11 @@ function setupAutoUpdater() {
   // it needs when a valid blockmap is available.
   autoUpdater.disableDifferentialDownload = false
   autoUpdater.previousBlockmapBaseUrlOverride =
-    `https://github.com/Romeoisl/Whatsapp-UNOFFICIAL-/releases/download/v${app.getVersion()}/`
+    `https://github.com/Romeoisl/Whatsapp-MacOS-Intel/releases/download/v${app.getVersion()}/`
 
   autoUpdater.on('checking-for-update', () => forward('update:checking', { version: app.getVersion() }))
   autoUpdater.on('update-available', (info) => {
+    latestAvailableVersion = info.version || null
     updateDownloadStarted = false
     forward('update:available', {
       version: info.version,
@@ -606,6 +622,16 @@ core.on('notify', (items) => {
 })
 
 app.whenReady().then(() => {
+  const integrity = getIntegrityStatus()
+  if (shouldBlock(integrity)) {
+    dialog.showErrorBox(
+      'Liquid WhatsApp integrity check failed',
+      'This copy of Liquid WhatsApp appears to have been modified after it was signed. For your security, the app will close. Install the release again from the official GitHub Releases page.'
+    )
+    app.quit()
+    return
+  }
+
   buildMenu()
   registerIpc()
   createWindow()
