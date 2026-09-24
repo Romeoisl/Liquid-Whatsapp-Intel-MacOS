@@ -56,7 +56,17 @@ class LocalMessageStore {
   }
 
   upsertMany(jid, messages) {
-    for (const m of messages || []) this.upsert(jid, m)
+    const list = (messages || []).filter((m) => jid && m?.id).map((message) => {
+      const safe = { ...message }
+      delete safe.raw
+      return { op: 'upsert', jid, message: safe }
+    })
+    if (!list.length) return
+    const text = list.map((record) => JSON.stringify(record)).join('\n') + '\n'
+    fs.appendFileSync(this.file, text)
+    this.dirtyBytes += Buffer.byteLength(text)
+    for (const record of list) this._apply(record)
+    if (this.dirtyBytes > 4 * 1024 * 1024) this.compact()
   }
 
   list(jid, limit = 80) {
