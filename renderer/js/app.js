@@ -739,7 +739,7 @@ function openSettingsModal() {
     }
 
     $id('set-theme').addEventListener('change', () => {
-      document.documentElement.dataset.theme = $id('set-theme').value
+      applyTheme($id('set-theme').value)
     })
 
     window.liquid.localInfo().then((info) => {
@@ -762,7 +762,7 @@ function openSettingsModal() {
         backupEnabled: $id('set-backup').checked,
         ai: { provider: $id('ai-provider').value, model: $id('ai-model').value.trim(), key: $id('ai-key').value.trim() }
       })
-      document.documentElement.dataset.theme = $id('set-theme').value
+      applyTheme($id('set-theme').value)
       ui.toast('Settings saved')
     })
 
