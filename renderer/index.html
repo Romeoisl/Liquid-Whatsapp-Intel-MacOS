@@ -77,12 +77,12 @@
         
         <!-- Header calling options integrated with vector inline SVGs -->
         <div class="header-actions">
-          <button class="liquid-action-icon-btn" id="headerVoiceCallBtn" title="Call (signaling only)" aria-label="Call (signaling only)">
+          <button class="liquid-action-icon-btn" id="headerVoiceCallBtn" title="Voice call via WhatsApp Web" aria-label="Voice call via WhatsApp Web">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
               <path d="M18.2 15.6l-2.4-1.2c-.4-.2-.9-.1-1.2.2l-1.4 1.4c-2.4-1.2-4.4-3.2-5.6-5.6l1.4-1.4c.3-.3.4-.8.2-1.2L8 5.4c-.2-.4-.7-.6-1.1-.5l-3 .6c-.5.1-.9.5-.9 1 0 9.7 7.9 17.5 17.5 17.5.5 0 .9-.4 1-.9l.6-3.1c.1-.5-.1-1-.5-1.2z"/>
             </svg>
           </button>
-          <button class="liquid-action-icon-btn" id="headerVideoCallBtn" title="Video call (signaling only)" aria-label="Video call (signaling only)">
+          <button class="liquid-action-icon-btn" id="headerVideoCallBtn" title="Video call via WhatsApp Web" aria-label="Video call via WhatsApp Web">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
               <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
             </svg>
@@ -154,7 +154,7 @@
   </div>
   <div id="call-history-list" class="contact-list"></div>
   <button id="clear-call-history" class="btn ghost" style="width:100%;margin-top:12px">Clear call history</button>
-  <p class="hint">Call signaling and history are supported by this build. Actual WhatsApp call media acceptance depends on the WhatsApp WebRTC call stack and is not fabricated by Liquid WhatsApp.</p>
+  <p class="hint">Calls open WhatsApp Web in a dedicated window so WhatsApp handles the real voice/video media. Your WhatsApp Web login is kept in a separate persistent session on this Mac.</p>
 </template>
 
 <template id="tpl-viewonce">
