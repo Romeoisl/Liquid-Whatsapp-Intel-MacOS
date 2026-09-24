@@ -62,5 +62,11 @@
       "title": "Liquid WhatsApp",
       "artifactName": "Liquid-WhatsApp-${version}-Catalina-Intel.dmg"
     }
+  },
+  "overrides": {
+    "@whiskeysockets/baileys": {
+      "@whiskeysockets/eslint-config": "1.0.0"
+    },
+    "@whiskeysockets/eslint-config": "1.0.0"
   }
 }
