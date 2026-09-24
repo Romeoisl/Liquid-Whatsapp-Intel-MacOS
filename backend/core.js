@@ -161,9 +161,8 @@ class WhatsAppCore extends EventEmitter {
       if (messages?.length) this._onMessages({ messages, type: 'append' })
     })
 
-    // Baileys can observe call signaling, but it does not provide a complete
-    // desktop WebRTC call stack by itself. Keep this as an event notification
-    // instead of opening a broken fake call window.
+    // The VoIP-enabled Baileys fork emits the normal WhatsApp call signaling
+    // events. Real media calls are handled by its WhatsApp Web VoIP/WASM layer.
     this.sock.ev.on('call', (events) => {
       for (const call of events || []) {
         this.recordCall({
