@@ -1,14 +1,17 @@
-name: Build Liquid WhatsApp DMG
+name: Build and Release Liquid WhatsApp
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  build-dmg:
-    name: Build Catalina Intel DMG
+  build:
+    name: Build Catalina Intel package
     runs-on: macos-15-intel
 
     steps:
@@ -19,6 +22,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install dependencies
         run: npm install
@@ -26,19 +30,48 @@ jobs:
       - name: Check project
         run: npm run check
 
-      - name: Build Catalina Intel DMG
-        run: npm run build:catalina
+      - name: Verify release version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
+            echo "Tag v$TAG_VERSION does not match package.json version $PACKAGE_VERSION"
+            exit 1
+          fi
 
-      - name: Upload DMG
+      - name: Build artifacts
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            npm run release
+          else
+            npm run build:catalina
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload DMG artifact
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
-          name: Liquid-WhatsApp-Catalina-Intel-DMG
+          name: Liquid-WhatsApp-${{ github.ref_name }}-Catalina-Intel-DMG
           path: dist/*.dmg
           if-no-files-found: error
 
-      - name: Upload ZIP
+      - name: Upload ZIP artifact
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
-          name: Liquid-WhatsApp-Catalina-Intel-ZIP
+          name: Liquid-WhatsApp-${{ github.ref_name }}-Catalina-Intel-ZIP
           path: dist/*.zip
+          if-no-files-found: error
+
+      - name: Upload manual-build artifacts
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Liquid-WhatsApp-Catalina-Intel
+          path: |
+            dist/*.dmg
+            dist/*.zip
           if-no-files-found: error
