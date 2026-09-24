@@ -14,7 +14,7 @@
     "check:renderer": "node --check renderer/js/store.js && node --check renderer/js/api.js && node --check renderer/js/ui.js && node --check renderer/js/app.js"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "6.7.16",
+    "@whiskeysockets/baileys": "6.7.24",
     "pino": "^9.0.0",
     "ffmpeg-static": "5.2.0"
   },
