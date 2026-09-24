@@ -70,5 +70,6 @@ contextBridge.exposeInMainWorld('liquid', {
   onCallState: (cb) => on('ev:call:state', cb),
   onCallError: (cb) => on('ev:call:error', cb),
   onCallAudio: (cb) => on('ev:call:audio', cb),
+  onCallVideo: (cb) => on('ev:call:video', cb),
   onOutbox: (cb) => on('outbox', cb)
 })
