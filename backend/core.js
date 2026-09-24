@@ -16,7 +16,7 @@ const {
   DisconnectReason,
   Browsers,
   downloadMediaMessage
-} = require('@whiskeysockets/baileys')
+} = require('@innovatorssoft/baileys')
 const pino = require('pino')
 const LocalMessageStore = require('./local-store')
 
@@ -89,6 +89,7 @@ class WhatsAppCore extends EventEmitter {
     this.schedules = this._readJson(this.scheduleFile, [])
     this.starred = this._readJson(this.starredFile, [])
     this.callHistory = this._readJson(this.callHistoryFile, [])
+    this.activeCalls = new Map()
     this._timer = setInterval(() => this._tick().catch(() => {}), 5000)
   }
 
@@ -96,6 +97,8 @@ class WhatsAppCore extends EventEmitter {
     clearInterval(this._timer)
     clearTimeout(this._legacyPersistTimer)
     if (this.connectTimer) clearTimeout(this.connectTimer)
+    for (const call of this.activeCalls.values()) { try { call.end('app_shutdown') } catch (_) {} }
+    this.activeCalls.clear()
     try { this.sock?.ws?.close?.() } catch (_) {}
     this.sock = null
   }
@@ -809,29 +812,108 @@ class WhatsAppCore extends EventEmitter {
     await this.setSettings({ privacy: this.settings.privacy })
   }
 
+  _wireActiveCall(call, targetJid, isVideo, direction = 'outgoing') {
+    if (!call?.callId) return
+    this.activeCalls.set(call.callId, call)
+    const type = isVideo ? 'video' : 'voice'
+    const emitState = (status) => {
+      this.emit('call:state', {
+        id: call.callId,
+        jid: targetJid,
+        type,
+        direction,
+        status,
+        timestamp: Date.now()
+      })
+    }
+    call.on('ringing', () => { emitState('ringing'); this.recordCall({ id: call.callId, jid: targetJid, type, direction, status: 'ringing', timestamp: Date.now() }) })
+    call.on('accepted', () => { emitState('accepted') })
+    call.on('connected', () => {
+      emitState('connected')
+      this.recordCall({ id: call.callId, jid: targetJid, type, direction, status: 'connected', timestamp: Date.now() })
+    })
+    call.on('audio', (pcm) => {
+      if (pcm?.buffer) this.emit('call:audio', { id: call.callId, sampleRate: 16000, channels: 1, pcm })
+    })
+    call.on('error', (error) => {
+      emitState('error')
+      this.emit('call:error', { id: call.callId, jid: targetJid, message: error?.message || String(error) })
+    })
+    call.on('ended', (reason) => {
+      emitState('ended')
+      this.recordCall({ id: call.callId, jid: targetJid, type, direction, status: reason || 'ended', timestamp: Date.now() })
+      this.activeCalls.delete(call.callId)
+    })
+    emitState('initiating')
+  }
+
   async callAction(action, callId, targetJid, isVideo = false) {
     if (!this.sock || !targetJid) throw new Error('WhatsApp is not connected')
     const type = isVideo ? 'video' : 'voice'
-    if (action === 'reject' || action === 'hangup') {
+
+    if (action === 'reject') {
       if (callId && typeof this.sock.rejectCall === 'function') {
-        try { await this.sock.rejectCall(callId, targetJid) } catch (e) { logger.warn('call reject failed: %s', e.message) }
+        await this.sock.rejectCall(callId, targetJid).catch((e) => logger.warn('call reject failed: %s', e.message))
       }
-      this.recordCall({ id: callId || `local_${Date.now()}`, jid: targetJid, type, direction: 'incoming', status: action === 'hangup' ? 'terminate' : 'reject', timestamp: Date.now() })
+      this.recordCall({ id: callId || `local_${Date.now()}`, jid: targetJid, type, direction: 'incoming', status: 'reject', timestamp: Date.now() })
       return { ok: true }
     }
+
+    if (action === 'hangup') {
+      if (callId && typeof this.sock.endCall === 'function') {
+        await this.sock.endCall(callId).catch(() => {})
+      } else if (callId && this.activeCalls.has(callId)) {
+        this.activeCalls.get(callId).end('hangup')
+      }
+      this.recordCall({ id: callId || `local_${Date.now()}`, jid: targetJid, type, direction: 'outgoing', status: 'terminate', timestamp: Date.now() })
+      return { ok: true }
+    }
+
     if (action === 'start') {
-      if (typeof this.sock.offerCall !== 'function') throw new Error('This Baileys build can signal calls but does not expose offerCall')
-      const result = await this.sock.offerCall(targetJid, !!isVideo)
-      this.recordCall({ id: result?.id || callId || `out_${Date.now()}`, jid: targetJid, type, direction: 'outgoing', status: 'offer', timestamp: Date.now() })
-      return result || { ok: true }
+      if (typeof this.sock.initiateCall !== 'function') {
+        throw new Error('The installed WhatsApp VoIP stack does not expose initiateCall')
+      }
+
+      // The Innovators Soft Baileys fork bridges Baileys signaling to the
+      // WhatsApp Web VoIP WASM/RTP stack. The capture patch installed by
+      // postinstall adds live macOS AVFoundation microphone/camera sources.
+      const options = {
+        isVideo: !!isVideo,
+        audioSource: 'microphone:0',
+        durationMs: 0,
+        repeatAudio: true,
+        preRingingTimeoutMs: 30000
+      }
+      if (isVideo) {
+        options.videoSource = 'camera:0'
+        options.videoWidth = 640
+        options.videoHeight = 480
+        options.videoFps = 15
+        options.isHorizontal = false
+      }
+
+      const call = await this.sock.initiateCall(targetJid, options)
+      const id = call?.callId || call?.id || callId || `out_${Date.now()}`
+      this._wireActiveCall(call, targetJid, isVideo, 'outgoing')
+      this.recordCall({ id, jid: targetJid, type, direction: 'outgoing', status: 'offer', timestamp: Date.now() })
+      return { id, callId: id, ok: true }
     }
+
     if (action === 'accept') {
+      if (typeof this.sock.preacceptCall === 'function') {
+        await this.sock.preacceptCall(callId, targetJid, !!isVideo)
+      }
+      if (typeof this.sock.acceptCall !== 'function') {
+        throw new Error('This WhatsApp VoIP build cannot accept calls')
+      }
+      await this.sock.acceptCall(callId, targetJid, !!isVideo)
       this.recordCall({ id: callId || `local_${Date.now()}`, jid: targetJid, type, direction: 'incoming', status: 'accept', timestamp: Date.now() })
-      throw new Error('Incoming call media acceptance is not exposed by Baileys 6.7.24; the app can detect/reject calls, but cannot safely create the WhatsApp WebRTC media session.')
+      this.emit('call:state', { id: callId, jid: targetJid, type, direction: 'incoming', status: 'accepted', timestamp: Date.now() })
+      return { ok: true }
     }
+
     throw new Error(`Unsupported call action: ${action}`)
   }
-
   async rejectCall(callId, targetJid) {
     return this.callAction('reject', callId, targetJid, false)
   }
@@ -864,10 +946,10 @@ class WhatsAppCore extends EventEmitter {
 
   async createCallLink(type = 'audio') {
     if (!this.sock || typeof this.sock.createCallLink !== 'function') {
-      throw new Error('Call-link creation is not exposed by Baileys 6.7.24. A WhatsApp call link cannot be safely fabricated.')
+      throw new Error('WhatsApp call links are not available on this session')
     }
-    const token = await this.sock.createCallLink(type === 'video' ? 'video' : 'audio')
-    return `https://call.whatsapp.com/${type === 'video' ? 'video' : 'voice'}/${token}`
+    const link = await this.sock.createCallLink(type === 'video' ? 'video' : 'audio')
+    return String(link)
   }
 
   chatList() {
