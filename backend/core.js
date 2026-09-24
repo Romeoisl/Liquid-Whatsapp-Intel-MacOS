@@ -651,7 +651,14 @@ class WhatsAppCore extends EventEmitter {
   }
 
   localDatabaseInfo() {
-    return { schema: 2, chats: this.localDb.index.size, messages: this.localDb.all().length, outbox: this.outbox.length }
+    const size = (file) => { try { return fs.statSync(file).size } catch (_) { return 0 } }
+    const dirSize = (dir) => { try { return fs.readdirSync(dir, { withFileTypes: true }).reduce((n, e) => n + (e.isFile() ? size(path.join(dir, e.name)) : 0), 0) } catch (_) { return 0 } }
+    const bytes = {
+      messagesDb: size(this.localDbFile), legacyMessages: size(this.localMessagesFile), settings: size(this.settingsFile),
+      callHistory: size(this.callHistoryFile), backups: dirSize(path.join(this.dataDir, 'backups')), voiceNotes: dirSize(path.join(this.dataDir, 'voice-notes'))
+    }
+    bytes.total = Object.values(bytes).reduce((a, b) => a + b, 0)
+    return { schema: 2, chats: this.localDb.index.size, messages: this.localDb.all().length, outbox: this.outbox.length, callHistory: this.callHistory.length, bytes }
   }
 
   exportLocalData() {
@@ -661,6 +668,7 @@ class WhatsAppCore extends EventEmitter {
       settings: this.settings,
       chatMeta: this.chatMeta,
       starred: this.starred,
+      callHistory: this.callHistory,
       schedules: this.schedules,
       outbox: this.outbox,
       messages: this.localDb.exportData().messages
