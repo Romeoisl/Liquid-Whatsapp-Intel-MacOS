@@ -97,10 +97,7 @@ function registerIpc() {
   ipcMain.handle('core:logout', safeHandler(() => core.logout()))
   ipcMain.handle('chat:set-active', (_e, jid) => core.setActiveJid(jid))
 
-  ipcMain.handle('call:action', safeHandler(async (_e, action, callId, targetJid, isVideo) => {
-    if (action === 'reject' || action === 'hangup') {
-      return core.callAction(action, callId, targetJid, !!isVideo)
-  }))
+  ipcMain.handle('call:action', safeHandler((_e, action, callId, targetJid, isVideo) => core.callAction(action, callId, targetJid, !!isVideo)))
 
   ipcMain.handle('chat:send-text', safeHandler((_e, jid, text, quoted) => core.sendText(jid, text, quoted)))
 
