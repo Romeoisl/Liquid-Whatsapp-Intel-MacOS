@@ -84,7 +84,7 @@ const ui = {
     if (m.kind === 'text') {
       body.innerHTML = this.md(m.text || '')
     } else if (m.kind === 'image' || m.kind === 'sticker') {
-      const img = this.el('img', { class: 'media', alt: '', style: 'width:' + (m.kind === 'sticker' ? '160px' : '280px') })
+      const img = this.el('img', { class: 'media', alt: '', loading: 'lazy', decoding: 'async', style: 'width:' + (m.kind === 'sticker' ? '160px' : '280px') })
       node.classList.add('media-loading')
       img.addEventListener('click', () => onMedia && onMedia(m))
       body.appendChild(img)
