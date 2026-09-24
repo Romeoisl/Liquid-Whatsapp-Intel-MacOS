@@ -19,6 +19,10 @@ async function init() {
     }
     console.error('[renderer] boot failed', e)
     showLogin()
+    if (status) {
+      status.className = 'status-line err'
+      status.textContent = e?.message || 'Liquid WhatsApp could not start. Open View → Toggle Developer Tools for details.'
+    }
   }
 }
 
@@ -61,6 +65,14 @@ function wireEvents() {
   api.on('connection', (u) => {
     if (u.connection === 'open') { pairingInProgress = false }
     if (u.connection === 'open' && !Store.user && u.user) { Store.user = u.user }
+    if (pairingInProgress && u.connection === 'close' && !u.loggedOut) {
+      pairingInProgress = false
+      if ($('app-view').classList.contains('hidden')) {
+        $('login-status').className = 'status-line err'
+        $('login-status').textContent = 'WhatsApp disconnected before linking. Please try again.'
+        $('login-btn').disabled = false
+      }
+    }
     if (u.connection === 'open' && $('app-view').classList.contains('hidden')) enterApp()
     if (u.loggedOut) { Store.reset(); showLogin(); renderMe(); return }
     renderMe()
