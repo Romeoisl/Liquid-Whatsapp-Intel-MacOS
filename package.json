@@ -12,7 +12,8 @@
     "build:catalina": "npm run check && electron-builder --mac dmg zip --x64 --publish never",
     "build:app": "npm run check && electron-builder --mac dir --x64",
     "check:renderer": "node --check renderer/js/store.js && node --check renderer/js/api.js && node --check renderer/js/ui.js && node --check renderer/js/app.js",
-    "postinstall": "node scripts/patch-voip-capture.js"
+    "postinstall": "node scripts/patch-voip-capture.js",
+    "release": "electron-builder --mac dmg zip --x64 --publish always"
   },
   "dependencies": {
     "pino": "^9.0.0",
@@ -70,7 +71,15 @@
     "dmg": {
       "title": "Liquid WhatsApp",
       "artifactName": "Liquid-WhatsApp-${version}-Catalina-Intel.dmg"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Romeoisl",
+        "repo": "Whatsapp-UNOFFICIAL-",
+        "releaseType": "release"
+      }
+    ]
   },
   "overrides": {
     "@whiskeysockets/baileys": {
