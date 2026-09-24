@@ -330,11 +330,8 @@ function wireStaticUI() {
     const version = info?.version || 'new'
     const status = $('update-status')
     if (status) status.textContent = `Version ${version} is available. Download it when you're ready.`
-    const choice = await ui.confirm?.(
-      `Liquid WhatsApp ${version} is available. Download the update now? The updater uses differential downloads when supported, so it can avoid re-downloading unchanged blocks.`,
-      'Update available'
-    )
-    if (choice === false) return
+    const choice = window.confirm(`Liquid WhatsApp ${version} is available. Download the update now? The updater uses differential downloads when supported, so it can avoid re-downloading unchanged blocks.`)
+    if (!choice) return
     try {
       await window.liquid.downloadUpdate()
       if (status) status.textContent = `Downloading Liquid WhatsApp ${version}…`
@@ -352,11 +349,8 @@ function wireStaticUI() {
     const version = info?.version || 'new'
     const status = $('update-status')
     if (status) status.textContent = `Update ${version} is ready to install.`
-    const choice = await ui.confirm?.(
-      `Liquid WhatsApp ${version} is downloaded and ready. Install it now and restart the app?`,
-      'Update ready'
-    )
-    if (choice === false) return
+    const choice = window.confirm(`Liquid WhatsApp ${version} is downloaded and ready. Install it now and restart the app?`)
+    if (!choice) return
     try { await window.liquid.installUpdate() } catch (e) { ui.toast(e?.message || 'Could not install the update') }
   })
   api.on('update-error', (e) => {
