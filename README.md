@@ -1,6 +1,6 @@
 # Liquid WhatsApp
 
-Liquid WhatsApp is an unofficial Electron desktop client for **macOS Catalina and Intel Macs**. It provides a custom WhatsApp-style desktop experience with local message storage, media tools, voice notes, groups, status, polls, calls UI, and a Catalina/Intel-focused build.
+Liquid WhatsApp is an unofficial Electron desktop client for **macOS Catalina and Intel Macs**. It provides a custom WhatsApp-style desktop experience with local message storage, media tools, voice notes, groups, status, polls, calls UI, secure AI credentials, and a Catalina/Intel-focused build.
 
 Made by **Gerald (Mateo devs)**.
 
@@ -56,7 +56,7 @@ Release assets are built for **Intel x64 Macs**:
 
 ## v2.2 Liquid Glass
 
-The UI uses a Liquid Glass-inspired visual layer with translucent panels, adaptive blur/saturation, soft highlights, floating controls and reduced-motion/performance modes.
+The UI uses a Liquid Glass-inspired visual layer with translucent panels, adaptive blur/saturation, soft highlights, floating controls, selectable glass styles, and reduced-motion/performance modes.
 
 Because Catalina predates Apple's native Liquid Glass APIs, the effect is implemented with Electron/CSS.
 
@@ -74,7 +74,7 @@ The current codebase includes a WhatsApp VoIP/WASM calling layer and one-to-one 
 
 Liquid WhatsApp uses an unofficial WhatsApp protocol implementation. WhatsApp can change its protocol, and use of unofficial clients may result in account restrictions. Test with an account you are prepared to lose.
 
-Session credentials and local message data are stored locally by the application. Treat the Mac user account and application data directory as sensitive. Do not share your Liquid WhatsApp data directory publicly.
+Session credentials and local message data are stored locally by the application. AI API keys are stored through Electron's OS-backed safeStorage in the main process rather than exposed to the renderer. Treat the Mac user account and application data directory as sensitive. Do not share your Liquid WhatsApp data directory publicly.
 
 ## Install from source
 
