@@ -63,6 +63,9 @@ contextBridge.exposeInMainWorld('liquid', {
   copyText: (t) => clipboard.writeText(String(t)),
   callAction: (action, callId, targetJid, isVideo) => invoke('call:action', action, callId, targetJid, isVideo),
   openExternal: (url) => invoke('external:open', url),
+  checkForUpdates: () => invoke('update:check'),
+  downloadUpdate: () => invoke('update:download'),
+  installUpdate: () => invoke('update:install'),
 
   on,
   onOpenChat: (cb) => on('open-chat', cb),
@@ -71,5 +74,12 @@ contextBridge.exposeInMainWorld('liquid', {
   onCallError: (cb) => on('ev:call:error', cb),
   onCallAudio: (cb) => on('ev:call:audio', cb),
   onCallVideo: (cb) => on('ev:call:video', cb),
-  onOutbox: (cb) => on('outbox', cb)
+  onOutbox: (cb) => on('outbox', cb),
+  onUpdateChecking: (cb) => on('ev:update:checking', cb),
+  onUpdateAvailable: (cb) => on('ev:update:available', cb),
+  onUpdateNotAvailable: (cb) => on('ev:update:not-available', cb),
+  onUpdateProgress: (cb) => on('ev:update:progress', cb),
+  onUpdateDownloaded: (cb) => on('ev:update:downloaded', cb),
+  onUpdateCancelled: (cb) => on('ev:update:cancelled', cb),
+  onUpdateError: (cb) => on('ev:update:error', cb)
 })
