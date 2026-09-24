@@ -1,7 +1,7 @@
 {
   "name": "liquid-whatsapp",
-  "version": "2.2.7",
-  "description": "Liquid WhatsApp desktop client for macOS Catalina and Intel Macs — v2.2.6 Liquid Glass with secure local AI credentials",
+  "version": "2.3.0",
+  "description": "Liquid WhatsApp desktop client for macOS Catalina and Intel Macs — v2.3.0 WhatsApp Web calling bridge",
   "main": "main.js",
   "author": "Gerald(Mateo DEV)",
   "license": "MIT",
