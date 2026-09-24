@@ -961,6 +961,96 @@ function openSettingsModal() {
     }
     tabs.forEach(tab => tab.addEventListener('click', () => selectSection(tab.dataset.section)))
 
+    const diagGrid = $id('diagnostics-grid')
+    const diagReport = $id('diagnostics-report')
+    let lastDiagnosticReport = ''
+
+    const fmtBytes = (n) => {
+      n = Number(n) || 0
+      if (n < 1024) return n + ' B'
+      if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB'
+      if (n < 1024 * 1024 * 1024) return (n / 1024 / 1024).toFixed(1) + ' MB'
+      return (n / 1024 / 1024 / 1024).toFixed(2) + ' GB'
+    }
+    const diagStatus = (ok) => ok ? '<span class="diag-ok">✓</span>' : '<span class="diag-warn">!</span>'
+    const runDiagnostics = async () => {
+      diagReport.textContent = 'Running diagnostic…'
+      try {
+        const d = await window.liquid.diagnostics()
+        const osVersion = String(d.system.os || '')
+        const osOk = /^10\.(15|1[6-9])(?:\.|$)/.test(osVersion) || Number(osVersion.split('.')[0]) > 10
+        const archOk = d.app.arch === 'x64'
+        const micOk = ['granted', 'not-determined'].includes(d.permissions.microphone)
+        const camOk = ['granted', 'not-determined'].includes(d.permissions.camera)
+        const storageOk = !d.system.storage || d.system.storage.free > 1024 * 1024 * 1024
+        const items = [
+          ['Liquid WhatsApp', d.app.version, true],
+          ['macOS', osVersion, osOk],
+          ['Architecture', d.app.arch, archOk],
+          ['CPU', d.system.cpu, true],
+          ['CPU cores', String(d.system.cores), d.system.cores >= 2],
+          ['Memory', fmtBytes(d.system.memory.total), d.system.memory.total >= 4 * 1024 * 1024 * 1024],
+          ['Free memory', fmtBytes(d.system.memory.free), d.system.memory.free >= 512 * 1024 * 1024],
+          ['Storage free', d.system.storage ? fmtBytes(d.system.storage.free) : 'Unavailable', storageOk],
+          ['Microphone', d.permissions.microphone, micOk],
+          ['Camera', d.permissions.camera, camOk],
+          ['GPU', d.gpu?.featureStatus ? 'Detected' : 'Unavailable', !!d.gpu],
+          ['WhatsApp session', d.connection.hasSession ? (d.connection.connected ? 'Connected' : 'Saved, disconnected') : 'Not linked', true],
+          ['Performance mode', d.performance.mode, true]
+        ]
+        diagGrid.innerHTML = items.map(([label,value,ok]) => '<div class="diagnostic-item"><span>'+ui.esc(label)+'</span><strong>'+diagStatus(ok)+' '+ui.esc(String(value))+'</strong></div>').join('')
+
+        lastDiagnosticReport = [
+          'LIQUID WHATSAPP DIAGNOSTIC',
+          'Generated: ' + new Date().toISOString(),
+          '',
+          'APP',
+          'Version: ' + d.app.version,
+          'Electron: ' + d.app.electron,
+          'Chrome: ' + d.app.chrome,
+          'Node: ' + d.app.node,
+          'Packaged: ' + d.app.packaged,
+          'Architecture: ' + d.app.arch,
+          '',
+          'SYSTEM',
+          'macOS: ' + d.system.os,
+          'CPU: ' + d.system.cpu,
+          'Cores: ' + d.system.cores,
+          'Memory: ' + fmtBytes(d.system.memory.total) + ' total / ' + fmtBytes(d.system.memory.free) + ' free',
+          'Storage: ' + (d.system.storage ? fmtBytes(d.system.storage.free) + ' free / ' + fmtBytes(d.system.storage.total) + ' total' : 'unavailable'),
+          '',
+          'PERMISSIONS',
+          'Microphone: ' + d.permissions.microphone,
+          'Camera: ' + d.permissions.camera,
+          '',
+          'PERFORMANCE',
+          'App CPU: ' + Number(d.process.cpuPercent || 0).toFixed(1) + '%',
+          'App private memory: ' + fmtBytes((Number(d.process.privateMemory) || 0) * 1024),
+          'App processes: ' + d.process.processCount,
+          'Mode: ' + d.performance.mode,
+          '',
+          'CONNECTION',
+          'Session: ' + (d.connection.hasSession ? 'saved' : 'not linked'),
+          'Connected: ' + d.connection.connected,
+          '',
+          'GPU',
+          JSON.stringify(d.gpu?.featureStatus || {}, null, 2)
+        ].join('\n')
+        diagReport.textContent = lastDiagnosticReport
+      } catch (e) {
+        diagReport.textContent = 'Diagnostic failed: ' + (e.message || e)
+      }
+    }
+
+    $id('diagnostics-run').addEventListener('click', runDiagnostics)
+    $id('diagnostics-copy').addEventListener('click', async () => {
+      if (!lastDiagnosticReport) await runDiagnostics()
+      if (lastDiagnosticReport) {
+        await window.liquid.copyText(lastDiagnosticReport)
+        ui.toast('Diagnostic report copied')
+      }
+    })
+
     $id('settings-name').textContent = user.name || 'Me'
     $id('settings-number').textContent = user.number ? '+' + user.number : 'Connected account'
     $id('settings-avatar').textContent = (user.name || 'M').trim().charAt(0).toUpperCase()
