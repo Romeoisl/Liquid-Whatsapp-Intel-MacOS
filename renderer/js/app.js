@@ -238,7 +238,7 @@ function wireStaticUI() {
     const code = $('pair-code-value').textContent.replace(/-/g, '').trim()
     if (!code || code === '—') return
     try {
-      await navigator.clipboard.writeText(code)
+      window.liquid.copyText(code)
       ui.toast('Pairing code copied')
     } catch (_) {
       ui.toast('Could not copy the pairing code')
