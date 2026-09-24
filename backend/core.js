@@ -79,7 +79,7 @@ class WhatsAppCore extends EventEmitter {
       notifications: true,
       typingIndicator: true,
       privacy: {},
-      ai: { provider: 'openai', model: '', key: '' },
+      ai: { provider: 'openai', model: '', key: '', keyEncrypted: '' },
       theme: 'system',
       soundNotifications: true,
       showPreviews: true,
@@ -1124,7 +1124,13 @@ class WhatsAppCore extends EventEmitter {
     }
   }
 
-  getSettings() { return this.settings }
+  getSettings() {
+    const settings = { ...this.settings }
+    settings.ai = { ...(this.settings.ai || {}) }
+    delete settings.ai.key
+    settings.ai.keyStored = !!(this.settings.ai?.keyEncrypted || this.settings.ai?.key)
+    return settings
+  }
   getStarred() { return this.starred }
   getSchedules() { return this.schedules }
 
@@ -1135,10 +1141,30 @@ class WhatsAppCore extends EventEmitter {
   }
 
   async setSettings(patch) {
-    this.settings = { ...this.settings, ...(patch || {}) }
+    const next = { ...(patch || {}) }
+    if (next.ai) {
+      next.ai = { ...(this.settings.ai || {}), ...next.ai }
+      // Renderer settings updates must never write a plaintext API key.
+      if (Object.prototype.hasOwnProperty.call(next.ai, 'key')) delete next.ai.key
+    }
+    this.settings = { ...this.settings, ...next }
     await fs.promises.writeFile(this.settingsFile, JSON.stringify(this.settings, null, 2), 'utf8')
-    this.emit('settings', this.settings)
-    return this.settings
+    this.emit('settings', this.getSettings())
+    return this.getSettings()
+  }
+
+  getAiSecret() {
+    return String(this.settings.ai?.key || '')
+  }
+
+  async setAiEncryptedSecret(value) {
+    const ai = { ...(this.settings.ai || {}) }
+    delete ai.key
+    ai.keyEncrypted = String(value || '')
+    this.settings.ai = ai
+    await fs.promises.writeFile(this.settingsFile, JSON.stringify(this.settings, null, 2), 'utf8')
+    this.emit('settings', this.getSettings())
+    return true
   }
 
   async addAutoReply(rule) {
