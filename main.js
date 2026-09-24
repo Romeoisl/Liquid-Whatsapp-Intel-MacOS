@@ -78,9 +78,20 @@ function openWhatsAppWebCall(targetJid, isVideo = false) {
   })
   webSession.setDisplayMediaRequestHandler((request, callback) => {
     if (request.securityOrigin !== 'https://web.whatsapp.com') return callback(null)
-    desktopCapturer.getSources({ types: ['screen', 'window'] })
-      .then((sources) => {
-        const source = sources[0]
+    desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 0, height: 0 } })
+      .then(async (sources) => {
+        if (!sources.length) return callback(null)
+        const buttons = sources.map((source) => source.name || 'Untitled window')
+        buttons.push('Cancel')
+        const choice = await dialog.showMessageBox(webCallWin, {
+          type: 'question',
+          title: 'Share your screen',
+          message: 'Choose what to share with your WhatsApp call.',
+          buttons,
+          defaultId: 0,
+          cancelId: buttons.length - 1
+        })
+        const source = choice.response < sources.length ? sources[choice.response] : null
         callback(source ? { video: source } : null)
       })
       .catch(() => callback(null))
