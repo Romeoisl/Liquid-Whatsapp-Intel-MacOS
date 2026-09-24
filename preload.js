@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('liquid', {
   sendDroppedMedia: (jid, filePath, caption, quoted) => invoke('chat:send-dropped-media', jid, filePath, caption, quoted),
   sendVoiceNote: (jid, dataUrl, durationMs, quoted) => invoke('chat:send-voice-note', jid, dataUrl, durationMs, quoted),
   typing: (jid, on) => invoke('chat:typing', jid, on),
+  networkPing: () => invoke('network:ping'),
   loadChat: (jid) => invoke('chat:load', jid),
   searchMessages: (q, jid) => invoke('chat:search', q, jid),
   setChatMeta: (jid, patch) => invoke('chat:meta', jid, patch),
