@@ -236,6 +236,7 @@ function registerIpc() {
     }
   })
 
+  ipcMain.handle('session:info', () => core.getLinkedSession())
   ipcMain.handle('local:info', () => core.localDatabaseInfo())
   ipcMain.handle('local:clear-backups', safeHandler(() => core.clearBackups()))
   ipcMain.handle('calls:history', () => core.getCallHistory())
