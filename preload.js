@@ -55,6 +55,7 @@ contextBridge.exposeInMainWorld('liquid', {
   aiImage: (prompt) => invoke('ai:image', prompt),
   localInfo: () => invoke('local:info'),
   diagnostics: () => invoke('diagnostics:get'),
+  integrity: () => invoke('integrity:get'),
   sessionInfo: () => invoke('session:info'),
   clearBackups: () => invoke('local:clear-backups'),
   callHistory: () => invoke('calls:history'),
