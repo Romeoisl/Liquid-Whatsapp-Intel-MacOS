@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Notification, Menu, shell, systemPreferences, safeStorage } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, Notification, Menu, shell, systemPreferences, safeStorage, session, desktopCapturer } = require('electron')
 const os = require('os')
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
@@ -16,6 +16,7 @@ let win = null
 let backupTimer = null
 let updateCheckTimer = null
 let updateDownloadStarted = false
+let webCallWin = null
 
 function forward(channel, data) {
   if (win && !win.isDestroyed()) win.webContents.send('ev:' + channel, data)
@@ -43,6 +44,110 @@ function createWindow() {
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'))
   win.once('ready-to-show', () => win.show())
   win.on('closed', () => { win = null })
+}
+
+function openWhatsAppWebCall(targetJid, isVideo = false) {
+  const jid = String(targetJid || '')
+  if (!jid || jid.endsWith('@g.us') || jid === 'status@broadcast') {
+    throw new Error('WhatsApp Web calling is available here for private chats only')
+  }
+
+  const rawNumber = jid.endsWith('@s.whatsapp.net') ? jid.slice(0, -'@s.whatsapp.net'.length) : jid
+  const number = rawNumber.split(':')[0].replace(/\\D/g, '')
+  if (!number) throw new Error('Could not determine the contact phone number')
+
+  const callUrl = new URL('https://web.whatsapp.com/send')
+  callUrl.searchParams.set('phone', number)
+
+  if (webCallWin && !webCallWin.isDestroyed()) {
+    webCallWin.show()
+    webCallWin.focus()
+    webCallWin.loadURL(callUrl.toString())
+    return { ok: true, mode: isVideo ? 'video' : 'audio', reused: true }
+  }
+
+  const webSession = session.fromPartition('persist:liquid-whatsapp-web')
+  webSession.setPermissionCheckHandler((webContents, permission, requestingOrigin) => {
+    return permission === 'media' && requestingOrigin === 'https://web.whatsapp.com'
+  })
+  webSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    const origin = (() => {
+      try { return new URL(webContents.getURL()).origin } catch (_) { return '' }
+    })()
+    callback(permission === 'media' && origin === 'https://web.whatsapp.com')
+  })
+  webSession.setDisplayMediaRequestHandler((request, callback) => {
+    if (request.securityOrigin !== 'https://web.whatsapp.com') return callback(null)
+    desktopCapturer.getSources({ types: ['screen', 'window'] })
+      .then((sources) => {
+        const source = sources[0]
+        callback(source ? { video: source } : null)
+      })
+      .catch(() => callback(null))
+  })
+
+  webCallWin = new BrowserWindow({
+    width: 1180,
+    height: 760,
+    minWidth: 900,
+    minHeight: 620,
+    title: isVideo ? 'WhatsApp Web Video Call — Liquid WhatsApp' : 'WhatsApp Web Call — Liquid WhatsApp',
+    backgroundColor: '#111b21',
+    webPreferences: {
+      session: webSession,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+      spellcheck: true
+    }
+  })
+
+  webCallWin.webContents.setUserAgent(
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
+  )
+
+  webCallWin.webContents.setWindowOpenHandler(({ url }) => {
+    try {
+      const parsed = new URL(url)
+      if (parsed.origin === 'https://web.whatsapp.com') {
+        return {
+          action: 'allow',
+          overrideBrowserWindowOptions: {
+            width: 1180,
+            height: 760,
+            webPreferences: {
+              session: webSession,
+              contextIsolation: true,
+              nodeIntegration: false,
+              sandbox: false
+            }
+          }
+        }
+      }
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+        setImmediate(() => shell.openExternal(parsed.toString()))
+      }
+    } catch (_) {}
+    return { action: 'deny' }
+  })
+
+  webCallWin.webContents.on('will-navigate', (event, url) => {
+    try {
+      const parsed = new URL(url)
+      if (parsed.origin !== 'https://web.whatsapp.com') {
+        event.preventDefault()
+        if (parsed.protocol === 'https:' || parsed.protocol === 'http:') shell.openExternal(parsed.toString())
+      }
+    } catch (_) {
+      event.preventDefault()
+    }
+  })
+
+  webCallWin.on('closed', () => { webCallWin = null })
+  webCallWin.loadURL(callUrl.toString())
+  webCallWin.show()
+
+  return { ok: true, mode: isVideo ? 'video' : 'audio', reused: false }
 }
 
 function buildMenu() {
@@ -140,6 +245,7 @@ function registerIpc() {
   }))
 
   ipcMain.handle('call:action', safeHandler((_e, action, callId, targetJid, isVideo) => core.callAction(action, callId, targetJid, !!isVideo)))
+  ipcMain.handle('whatsapp-web:call', safeHandler((_e, targetJid, isVideo) => openWhatsAppWebCall(targetJid, !!isVideo)))
 
   ipcMain.handle('chat:send-text', safeHandler((_e, jid, text, quoted) => core.sendText(jid, text, quoted)))
 
