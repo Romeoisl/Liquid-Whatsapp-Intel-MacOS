@@ -41,7 +41,7 @@ let quotedMessage = null
 
 function wireEvents() {
   api.on('connection', (u) => {
-    if (u.connection === 'open' && !Store.user && u.user) { Store.user = u.user }
+    if (u.connection === 'open') { pairingInProgress = false }\n    if (u.connection === 'open' && !Store.user && u.user) { Store.user = u.user }
     if (u.connection === 'open' && $('app-view').classList.contains('hidden')) enterApp()
     if (u.loggedOut) { Store.reset(); showLogin(); renderMe(); return }
     renderMe()
