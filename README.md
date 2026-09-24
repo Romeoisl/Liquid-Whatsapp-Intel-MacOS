@@ -8,17 +8,18 @@ Made by **Gerald (Mateo devs)**.
 
 ## Download
 
-### Versioned releases
+### GitHub Releases
 
-Use the dedicated release page to browse every published version and download its DMG or ZIP:
-
-**https://romeoisl.github.io/Whatsapp-UNOFFICIAL-/release/**
-
-You can also use the GitHub Releases page:
+All downloadable versions are published through **GitHub Releases**:
 
 **https://github.com/Romeoisl/Whatsapp-UNOFFICIAL-/releases**
 
-Each release is tied to a version tag such as `v2.2.2`, so older versions remain available instead of being replaced by a single temporary Actions artifact.
+Each release has its own version tag, such as `v2.2.2`, so older versions remain available instead of being replaced by a temporary GitHub Actions artifact.
+
+Release assets are built for **Intel x64 Macs**:
+
+- **DMG** — `Liquid-WhatsApp-<version>-Catalina-Intel.dmg`
+- **ZIP** — `Liquid-WhatsApp-<version>-x64.zip`
 
 ### Current target
 
@@ -26,6 +27,7 @@ Each release is tied to a version tag such as `v2.2.2`, so older versions remain
 - Intel x64 Macs
 - DMG and ZIP packages
 - Minimum macOS version: 10.15
+- Apple Silicon is not currently packaged
 
 ## Features
 
@@ -84,21 +86,38 @@ npm start
 ## Build for Intel Catalina
 
 ```bash
-npm run dist
+npm run build:catalina
 ```
 
-This creates a local DMG and ZIP without publishing them.
+This creates a local Intel DMG and ZIP without publishing them.
 
-## Publish a release
+## Publish a GitHub Release
 
-Set the version in `package.json`, commit it, then create and push a matching tag:
+Update the version in `package.json`, commit it, then create and push a matching semantic version tag:
 
 ```bash
 git tag v2.2.3
 git push origin v2.2.3
 ```
 
-The GitHub Actions release workflow verifies that the tag matches `package.json`, builds the Catalina Intel DMG/ZIP, and publishes them to a GitHub Release.
+The GitHub Actions workflow runs for tags matching `v*.*.*`. It:
+
+1. Checks that the Git tag matches `package.json`.
+2. Installs dependencies.
+3. Runs the project checks.
+4. Builds the macOS Intel x64 DMG and ZIP.
+5. Publishes both files to the matching GitHub Release.
+
+For example:
+
+```text
+GitHub Releases
+└── v2.2.3
+    ├── Liquid-WhatsApp-2.2.3-Catalina-Intel.dmg
+    └── Liquid-WhatsApp-2.2.3-x64.zip
+```
+
+GitHub Releases are the **only versioned download system** for the project. There is no separate release website.
 
 You can also publish locally when `GH_TOKEN` is configured:
 
@@ -108,11 +127,15 @@ npm run release
 
 electron-builder uses the GitHub publisher configured in `package.json`.
 
-## Release URLs
+## Release workflow
 
-- Release browser: https://github.com/Romeoisl/Whatsapp-UNOFFICIAL-/releases
-- Versioned download page: https://romeoisl.github.io/Whatsapp-UNOFFICIAL-/release/
-- A specific version can be selected on the release page with `?version=2.2.2`.
+The release workflow is located at:
+
+```text
+.github/workflows/build-dmg.yml
+```
+
+Manual workflow runs build the Intel Catalina DMG/ZIP as GitHub Actions artifacts. Version tags publish the same builds to GitHub Releases.
 
 ## Contributing
 
