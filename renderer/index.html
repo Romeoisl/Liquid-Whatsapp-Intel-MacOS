@@ -31,13 +31,14 @@
     <h1>Liquid WhatsApp</h1>
     <p class="sub">macOS Catalina edition · custom features</p>
     <div id="login-form">
-      <input id="login-number" type="tel" placeholder="Your number with country code, e.g. 14155552671" autocomplete="off" spellcheck="false">
+      <input id="login-number" type="tel" inputmode="numeric" maxlength="15" placeholder="Your number with country code, e.g. 14155552671" autocomplete="tel" spellcheck="false">
       <button id="login-btn" class="btn primary" style="margin-top:12px">Get pairing code</button>
       <p class="hint">You'll get an 8-character code. On your phone:<br>
         <b>WhatsApp → Settings → Linked devices → Link a device → "Link with phone number instead"</b></p>
       <div id="pair-code" class="pair-code hidden">
         <div class="code-label">Enter this code on your phone</div>
         <div id="pair-code-value" class="code-value">—</div>
+        <button id="copy-pair-code" class="btn ghost" type="button" style="margin-top:12px">Copy code</button>
       </div>
       <div id="login-status" class="status-line"></div>
     </div>
