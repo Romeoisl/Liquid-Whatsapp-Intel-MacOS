@@ -194,7 +194,7 @@ function registerIpc() {
   ipcMain.handle('local:clear-backups', safeHandler(() => core.clearBackups()))
   ipcMain.handle('calls:history', () => core.getCallHistory())
   ipcMain.handle('calls:clear-history', safeHandler(() => core.clearCallHistory()))
-  ipcMain.handle('calls:create-link', safeHandler((_e, type) => core.createCallLink(type))
+  ipcMain.handle('calls:create-link', safeHandler((_e, type) => core.createCallLink(type)))
   ipcMain.handle('local:export', safeHandler(async () => {
     const res = await dialog.showSaveDialog(win, {
       title: 'Export Liquid WhatsApp data',
@@ -231,6 +231,9 @@ core.on('settings', (s) => forward('settings', s))
 core.on('schedules', (s) => forward('schedules', s))
 core.on('call:incoming', (callData) => forward('call:ring', callData))
 core.on('calls', (history) => forward('calls', history))
+core.on('call:state', (state) => forward('call:state', state))
+core.on('call:error', (error) => forward('call:error', error))
+core.on('call:audio', (audio) => forward('call:audio', audio))
 
 core.on('notify', (items) => {
   if (core.getSettings().notifications === false || !Notification.isSupported()) return
