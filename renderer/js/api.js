@@ -24,6 +24,8 @@ const api = {
   },
 
   subscribe() {
+    if (this.subscribed) return
+    this.subscribed = true
     window.liquid.on('connection', (u) => {
       Store.conn = u.connection
       if (u.loggedOut) Store.reset()
