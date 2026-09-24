@@ -226,14 +226,29 @@ class WhatsAppCore extends EventEmitter {
 
   async pairWithPhone(numberRaw) {
     const number = String(numberRaw || '').replace(/[^\d]/g, '')
-    if (number.length < 8) throw new Error('Enter your full phone number with country code')
-    await this._connect()
+    if (number.length < 8 || number.length > 15) {
+      throw new Error('Enter a valid international phone number with country code')
+    }
 
     if (this.connection === 'open' || this.sock?.user) {
       throw new Error('This WhatsApp account is already connected')
     }
 
+    // A failed pairing attempt can leave a stale socket behind. Recreate it
+    // instead of requesting a new code through a dead connection.
+    if (this.sock && this.connection !== 'connecting') {
+      try { this.sock.ws?.close?.() } catch (_) {}
+      this.sock = null
+    }
+
+    await this._connect()
     await this._waitForWs()
+
+    if (!this.sock) throw new Error('WhatsApp socket is unavailable')
+    if (this.sock.authState?.creds?.registered) {
+      throw new Error('This WhatsApp session is already registered')
+    }
+
     return this.sock.requestPairingCode(number)
   }
 
