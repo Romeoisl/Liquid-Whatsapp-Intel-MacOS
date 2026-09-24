@@ -327,15 +327,21 @@ function wireStaticUI() {
   document.addEventListener('click', ui.hideCtx)
 }
 
-function applyTheme(theme) {\n  const value = theme || 'system'\n  const dark = value === 'dark' || (value === 'system' && window.matchMedia?.('(prefers-color-scheme: dark)').matches)\n  document.documentElement.dataset.theme = value\n  document.body.classList.toggle('dark', !!dark)\n  document.body.classList.toggle('light', !dark)\n}\n\nfunction filteredChats() {
+function applyTheme(theme) {
+  const value = theme || 'system'
+  const dark = value === 'dark' || (value === 'system' && window.matchMedia?.('(prefers-color-scheme: dark)').matches)
+  document.documentElement.dataset.theme = value
+  document.body.classList.toggle('dark', !!dark)
+  document.body.classList.toggle('light', !dark)
+}
+
+function filteredChats() {
   const q = Store.search.toLowerCase()
   let list = Store.chats
   if (Store.filter === 'unread') list = list.filter((c) => c.unread > 0)
   if (Store.filter === 'groups') list = list.filter((c) => c.id.endsWith('@g.us'))
-  if (Store.filter !== 'archived') list = list.filter((c) => !c.archived)
   if (Store.filter === 'archived') list = list.filter((c) => c.archived)
-  if (Store.filter !== 'archived') list = list.filter((c) => !c.archived)
-  if (Store.filter === 'archived') list = list.filter((c) => c.archived)
+  else list = list.filter((c) => !c.archived)
   if (q) list = list.filter((c) => c.name.toLowerCase().includes(q) || (c.lastMessage && c.lastMessage.text && c.lastMessage.text.toLowerCase().includes(q)))
   return list
 }
@@ -475,24 +481,40 @@ async function sendMessage() {
 }
 
 async function doPair() {
+  if (pairingInProgress) return
   const num = $('login-number').value.trim()
+  const digits = num.replace(/\D/g, '')
   const st = $('login-status')
   const btn = $('login-btn')
   const box = $('pair-code')
   const value = $('pair-code-value')
+
+  if (digits.length < 8 || digits.length > 15) {
+    st.className = 'status-line err'
+    st.textContent = 'Enter a valid international number, including the country code.'
+    $('login-number').focus()
+    return
+  }
+
+  pairingInProgress = true
+  value.textContent = '—'
+  box.classList.add('hidden')
   st.className = 'status-line'
   st.textContent = 'Connecting to WhatsApp…'
   btn.disabled = true
+
   try {
-    const code = await window.liquid.pair(num)
-    value.textContent = code || '—'
+    const code = await window.liquid.pair(digits)
+    if (!code) throw new Error('WhatsApp did not return a pairing code')
+    value.textContent = String(code).replace(/(.{4})(?=.)/, '$1-')
     box.classList.remove('hidden')
     st.className = 'status-line ok'
-    st.textContent = 'Enter the code on your phone. Keep this app open while linking.'
+    st.textContent = 'Enter this code in WhatsApp → Linked devices → Link with phone number instead. Keep Liquid WhatsApp open.'
   } catch (e) {
+    pairingInProgress = false
+    box.classList.add('hidden')
     st.className = 'status-line err'
     st.textContent = e.message || 'Pairing failed'
-  } finally {
     btn.disabled = false
   }
 }
