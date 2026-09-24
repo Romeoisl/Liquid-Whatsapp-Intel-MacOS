@@ -222,3 +222,14 @@ html[data-theme="light"] .settings-nav{background:rgba(0,0,0,.025)}
 
 .update-card { margin-top: 12px; }
 .update-card .row { margin-top: 10px; }
+
+
+/* v2.3 device diagnostics */
+.diagnostics-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.diagnostic-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--glass-border);background:var(--glass);border-radius:10px;font-size:12px}
+.diagnostic-item>span{color:var(--text-2)}
+.diagnostic-item strong{font-weight:600;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.diag-ok{color:#39b56a}.diag-warn{color:#e7a33e}
+.diagnostics-actions{margin-top:12px}
+.diagnostics-report{margin-top:10px;padding:12px;border:1px solid var(--glass-border);background:rgba(0,0,0,.12);border-radius:10px;max-height:260px;overflow:auto;white-space:pre-wrap;word-break:break-word;font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--text-2)}
+@media (max-width:760px){.diagnostics-grid{grid-template-columns:1fr}}
