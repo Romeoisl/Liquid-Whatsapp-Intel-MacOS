@@ -56,6 +56,7 @@
       <button id="btn-new-chat" class="icon-btn" title="New chat">➕</button>
       <button id="btn-status" class="icon-btn" title="Post status">📢</button>
       <button id="btn-starred" class="icon-btn" title="Starred messages">⭐</button>
+      <button id="btn-calls" class="icon-btn" title="Calls & call history">☎️</button>
       <button id="btn-settings" class="icon-btn" title="Settings">⚙️</button>
     </header>
     <div id="search-wrap"><input id="search" placeholder="Search chats" spellcheck="false"></div>
@@ -155,7 +156,19 @@
   <h2>Create poll</h2>
   <input id="poll-name" placeholder="Poll question" spellcheck="false">
   <textarea id="poll-options" class="textarea" placeholder="One option per line (up to 12)"></textarea>
+  <label class="row" style="margin-top:10px"><span style="flex:1">Answers per voter</span><select id="poll-count" class="select"><option value="1">Single answer</option><option value="2">2 answers</option><option value="3">3 answers</option><option value="4">4 answers</option><option value="5">5 answers</option></select></label>
   <button id="poll-go" class="btn primary" style="width:100%;margin-top:12px">Send poll</button>
+</template>
+
+<template id="tpl-calls">
+  <h2>Calls</h2>
+  <div class="row" style="margin-bottom:12px">
+    <button id="call-link-audio" class="btn ghost" style="flex:1">Audio call link</button>
+    <button id="call-link-video" class="btn ghost" style="flex:1">Video call link</button>
+  </div>
+  <div id="call-history-list" class="contact-list"></div>
+  <button id="clear-call-history" class="btn ghost" style="width:100%;margin-top:12px">Clear call history</button>
+  <p class="hint">Call signaling and history are supported by this build. Actual WhatsApp call media acceptance depends on the WhatsApp WebRTC call stack and is not fabricated by Liquid WhatsApp.</p>
 </template>
 
 <template id="tpl-viewonce">
@@ -295,6 +308,8 @@
       <div class="settings-section" data-section-panel="storage">
         <h2>Storage & data</h2>
         <div id="local-db-info" class="settings-card">Local message database</div>
+        <div class="row"><button id="storage-refresh" class="btn ghost" style="flex:1">Refresh usage</button><button id="storage-clear-backups" class="btn ghost" style="flex:1">Clear backups</button></div>
+        <label class="row" style="margin-top:10px"><span>Performance mode</span><select id="set-performance" class="select"><option value="auto">Auto</option><option value="balanced">Balanced</option><option value="low">Low power</option></select></label>
         <label class="row"><span>Automatic local backup</span><input id="set-backup" type="checkbox"></label>
         <div class="row"><button id="backup-export" class="btn ghost">Export backup…</button></div>
         <p class="hint">Backups contain local app data. WhatsApp account credentials are not exported.</p>
