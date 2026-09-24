@@ -72,6 +72,7 @@ let activeCallVideo = false
 let activeCallDirection = 'incoming'
 let callAudioContext = null
 let callAudioNextTime = 0
+let callVideoFrameBusy = false
 let quotedMessage = null
 
 function wireEvents() {
@@ -109,6 +110,7 @@ function wireEvents() {
     activeCallDirection = state?.direction || activeCallDirection
     if (state?.status === 'ended' || state?.status === 'error') {
       $('liquidCallBanner').classList.add('liquid-banner-hidden')
+      $('callRemoteVideo').classList.add('hidden')
       return
     }
     const name = Store.chats.find((x) => x.id === activeCallJid)?.name || (activeCallJid || '').split('@')[0] || 'WhatsApp contact'
@@ -120,6 +122,7 @@ function wireEvents() {
     $('liquidCallBanner').classList.remove('liquid-banner-hidden')
   })
   api.on('call-error', (error) => ui.toast(error?.message || 'WhatsApp call failed'))
+  api.on('call-video', (frame) => renderRemoteCallVideo(frame))
   api.on('call-audio', (packet) => {
     const pcm = packet?.pcm instanceof Float32Array
       ? packet.pcm
@@ -273,6 +276,52 @@ async function finishVoiceNote(send = true) {
     await window.liquid.sendVoiceNote(Store.activeJid, dataUrl, duration, quotedMessage)
     clearQuote()
   } catch (e) { ui.toast(e.message || 'Voice message failed to send') }
+}
+
+function renderRemoteCallVideo(frame) {
+  const canvas = $('callRemoteVideo')
+  if (!canvas || callVideoFrameBusy || !frame) return
+  const width = Number(frame.width || 0)
+  const height = Number(frame.height || 0)
+  if (!width || !height) return
+  const raw = frame.frameBuffer instanceof Uint8Array
+    ? frame.frameBuffer
+    : (frame.frameBuffer instanceof ArrayBuffer ? new Uint8Array(frame.frameBuffer) : null)
+  if (!raw || raw.length < Math.floor(width * height * 1.5)) return
+  callVideoFrameBusy = true
+  try {
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d', { alpha: false })
+    const image = ctx.createImageData(width, height)
+    const ySize = width * height
+    const uvWidth = width >> 1
+    const uvHeight = height >> 1
+    const uOffset = ySize
+    const vOffset = ySize + uvWidth * uvHeight
+    let p = 0
+    for (let y = 0; y < height; y++) {
+      const uvRow = (y >> 1) * uvWidth
+      for (let x = 0; x < width; x++) {
+        const Y = raw[y * width + x]
+        const U = raw[uOffset + uvRow + (x >> 1)] - 128
+        const V = raw[vOffset + uvRow + (x >> 1)] - 128
+        const r = Math.max(0, Math.min(255, Y + 1.402 * V))
+        const g = Math.max(0, Math.min(255, Y - 0.344136 * U - 0.714136 * V))
+        const b = Math.max(0, Math.min(255, Y + 1.772 * U))
+        image.data[p++] = r
+        image.data[p++] = g
+        image.data[p++] = b
+        image.data[p++] = 255
+      }
+    }
+    ctx.putImageData(image, 0, 0)
+    canvas.classList.remove('hidden')
+  } catch (_) {
+    canvas.classList.add('hidden')
+  } finally {
+    callVideoFrameBusy = false
+  }
 }
 
 function wireStaticUI() {
