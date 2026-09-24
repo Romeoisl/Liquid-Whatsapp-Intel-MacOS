@@ -1,10 +1,10 @@
 # Liquid WhatsApp
 
-Liquid WhatsApp is an unofficial Electron desktop client for **macOS Catalina and Intel Macs**. It provides a custom WhatsApp-style desktop experience with local message storage, media tools, voice notes, groups, status, polls, calls UI, secure AI credentials, and a Catalina/Intel-focused build.
+Liquid WhatsApp is an unofficial Electron desktop client for **macOS Catalina and Intel Macs**. It provides a custom WhatsApp-style desktop experience with local message storage, media tools, voice notes, groups, status, polls, diagnostics, secure AI credentials, and WhatsApp Web calling.
 
 Made by **Gerald (Mateo devs)**.
 
-> WhatsApp and the WhatsApp name, logo and related marks are trademarks of Meta Platforms, Inc. Liquid WhatsApp is independent, unofficial software and is not affiliated with or endorsed by Meta.
+> **Unofficial software:** Liquid WhatsApp is independent software and is not affiliated with, endorsed by, sponsored by, or officially supported by WhatsApp or Meta Platforms, Inc. WhatsApp, the WhatsApp name, logo and related marks are trademarks of Meta Platforms, Inc.
 
 ## Download
 
@@ -12,9 +12,9 @@ Made by **Gerald (Mateo devs)**.
 
 All downloadable versions are published through **GitHub Releases**:
 
-**https://github.com/Romeoisl/Whatsapp-UNOFFICIAL-/releases**
+**https://github.com/Romeoisl/Whatsapp-MacOS-Intel/releases**
 
-Each release has its own version tag, such as `v2.2.2`, so older versions remain available instead of being replaced by a temporary GitHub Actions artifact.
+Each release has its own version tag, such as `v2.3.0`, so older versions remain available instead of being replaced by a temporary GitHub Actions artifact.
 
 Release assets are built for **Intel x64 Macs**:
 
@@ -52,29 +52,42 @@ Release assets are built for **Intel x64 Macs**:
 - Call history and call links
 - Voice notes through the bundled FFmpeg pipeline
 - Catalina/Intel-focused performance optimizations
-- VoIP/WASM calling layer integration for one-to-one calls
+- WhatsApp Web calling bridge for supported one-to-one voice/video calls
+- Optional screen/window sharing source selection through the WhatsApp Web calling window
 
-## v2.2 Liquid Glass
+## v2.3.0 Calling Architecture
 
-The UI uses a Liquid Glass-inspired visual layer with translucent panels, adaptive blur/saturation, soft highlights, floating controls, selectable glass styles, and reduced-motion/performance modes.
+Version 2.3.0 uses a **WhatsApp Web calling bridge** for the desktop call experience.
 
-Because Catalina predates Apple's native Liquid Glass APIs, the effect is implemented with Electron/CSS.
+When a user starts a one-to-one voice or video call, Liquid WhatsApp opens a dedicated Electron window containing **web.whatsapp.com** and lets WhatsApp Web handle the supported call/media flow. The window uses a persistent application session so the WhatsApp Web login can remain available between launches.
+
+Liquid WhatsApp does **not** claim to implement or operate Meta's proprietary WhatsApp calling service itself. Availability of calling, video, and screen sharing depends on WhatsApp Web, the user's account, WhatsApp's rollout, browser/Electron compatibility, and applicable service restrictions.
+
+The project also contains legacy/internal VoIP/WASM calling dependencies from earlier development. These should not be interpreted as an assertion that Liquid WhatsApp independently implements or replaces WhatsApp's official calling infrastructure.
+
+**Testing note:** real-world voice/video calling still needs end-to-end testing on the target Catalina Intel Mac and with a second WhatsApp account. Group calling is not presented as a native Liquid WhatsApp implementation.
 
 ## Voice notes
 
 Electron recordings are normalized with the bundled `ffmpeg-static` binary before upload. Browser WebM/Opus recordings are converted to OGG/Opus for WhatsApp push-to-talk audio.
 
-## Calling
+## Security, privacy and account risk
 
-The current codebase includes a WhatsApp VoIP/WASM calling layer and one-to-one call UI/signaling integration.
+Liquid WhatsApp is an independent, unofficial client. It uses an unofficial WhatsApp protocol implementation for its core messaging connection and also provides a separate WhatsApp Web window for supported calling flows.
 
-**Important:** real-world voice/video calling still needs end-to-end testing on the target Catalina Intel Mac and with a second WhatsApp account. Group calling is intentionally not part of the current implementation.
+WhatsApp can change its protocols, web application, or service requirements at any time. Use of unofficial clients may result in account restrictions or loss of functionality. **Use an account you are prepared to lose if you choose to experiment with unofficial software.**
 
-## Security and account risk
+Session credentials and local message data are stored locally by the application. AI API keys are stored through Electron's OS-backed `safeStorage` in the main process rather than exposed directly to the renderer. Treat the Mac user account and application data directory as sensitive. Do not share your Liquid WhatsApp data directory, authentication state, private messages, or exported application data publicly.
 
-Liquid WhatsApp uses an unofficial WhatsApp protocol implementation. WhatsApp can change its protocol, and use of unofficial clients may result in account restrictions. Test with an account you are prepared to lose.
+Liquid WhatsApp does not represent itself as an official WhatsApp application and does not guarantee continued compatibility with WhatsApp services.
 
-Session credentials and local message data are stored locally by the application. AI API keys are stored through Electron's OS-backed safeStorage in the main process rather than exposed to the renderer. Treat the Mac user account and application data directory as sensitive. Do not share your Liquid WhatsApp data directory publicly.
+## Official WhatsApp compatibility and authorization
+
+This project is developed independently and is **not presented as authorized by WhatsApp or Meta**.
+
+If WhatsApp or Meta provides technical, legal, security, branding, or distribution guidance for this project, the project will follow applicable requirements and update this documentation accordingly.
+
+For official WhatsApp information, refer to Meta/WhatsApp's own documentation and contact channels rather than treating this repository as an official source.
 
 ## Install from source
 
@@ -97,8 +110,8 @@ This creates a local Intel DMG and ZIP without publishing them.
 Update the version in `package.json`, commit it, then create and push a matching semantic version tag:
 
 ```bash
-git tag v2.2.3
-git push origin v2.2.3
+git tag v2.3.0
+git push origin v2.3.0
 ```
 
 The GitHub Actions workflow runs for tags matching `v*.*.*`. It:
@@ -113,9 +126,9 @@ For example:
 
 ```text
 GitHub Releases
-└── v2.2.3
-    ├── Liquid-WhatsApp-2.2.3-Catalina-Intel.dmg
-    └── Liquid-WhatsApp-2.2.3-x64.zip
+└── v2.3.0
+    ├── Liquid-WhatsApp-2.3.0-Catalina-Intel.dmg
+    └── Liquid-WhatsApp-2.3.0-x64.zip
 ```
 
 GitHub Releases are the **only versioned download system** for the project. There is no separate release website.
@@ -132,7 +145,7 @@ You can also publish locally when `GH_TOKEN` is configured:
 npm run release
 ```
 
-electron-builder uses the GitHub publisher configured in `package.json`.
+electron-builder publishes to the GitHub repository configured in `package.json`.
 
 ## Release workflow
 
