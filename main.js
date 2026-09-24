@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, Notification, Menu, shell, systemPr
 const os = require('os')
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
+const https = require('https')
 const fs = require('fs')
 const WhatsAppCore = require('./backend/core')
 
@@ -123,6 +124,20 @@ function registerIpc() {
   ipcMain.handle('core:pair', safeHandler((_e, number) => core.pairWithPhone(number)))
   ipcMain.handle('core:logout', safeHandler(() => core.logout()))
   ipcMain.handle('chat:set-active', (_e, jid) => core.setActiveJid(jid))
+
+  ipcMain.handle('network:ping', safeHandler(async () => {
+    const started = Date.now()
+    await new Promise((resolve, reject) => {
+      const req = https.get('https://web.whatsapp.com/favicon.ico', { timeout: 5000 }, (res) => {
+        res.resume()
+        res.once('end', resolve)
+        res.once('error', reject)
+      })
+      req.once('timeout', () => req.destroy(new Error('Network ping timed out')))
+      req.once('error', reject)
+    })
+    return { ms: Date.now() - started }
+  }))
 
   ipcMain.handle('call:action', safeHandler((_e, action, callId, targetJid, isVideo) => core.callAction(action, callId, targetJid, !!isVideo)))
 
