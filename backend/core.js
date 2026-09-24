@@ -834,6 +834,16 @@ class WhatsAppCore extends EventEmitter {
     call.on('audio', (pcm) => {
       if (pcm?.buffer) this.emit('call:audio', { id: call.callId, sampleRate: 16000, channels: 1, pcm })
     })
+    call.on('video', (frame) => {
+      if (frame?.frameBuffer) this.emit('call:video', {
+        id: call.callId,
+        width: Number(frame.width || 0),
+        height: Number(frame.height || 0),
+        format: Number(frame.format || 1),
+        orientation: Number(frame.orientation || 0),
+        frameBuffer: frame.frameBuffer
+      })
+    })
     call.on('error', (error) => {
       emitState('error')
       this.emit('call:error', { id: call.callId, jid: targetJid, message: error?.message || String(error) })
