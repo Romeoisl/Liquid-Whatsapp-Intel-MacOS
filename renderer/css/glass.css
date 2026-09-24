@@ -221,6 +221,13 @@ body.dark, body:not(.light) {
 .chat-ping .ping-bar:nth-child(4) { height: 13px; }
 .chat-ping .ping-bar.active { opacity: .95; background: var(--accent-strong); }
 .chat-ping .ping-ms { margin-left: 3px; line-height: 14px; }
+.chat-friend-signal { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; font-size: 10px; color: var(--text-3); white-space: nowrap; }
+.chat-friend-signal .ping-bar { width: 3px; height: 4px; border-radius: 1px; background: var(--text-3); opacity: .28; }
+.chat-friend-signal .ping-bar:nth-child(2) { height: 7px; }
+.chat-friend-signal .ping-bar:nth-child(3) { height: 10px; }
+.chat-friend-signal .ping-bar:nth-child(4) { height: 13px; }
+.chat-friend-signal .ping-bar.active { opacity: .95; background: var(--accent-strong); }
+.chat-friend-signal .ping-ms { margin-left: 3px; line-height: 14px; }
 .header-actions { display: flex; gap: 6px; }
 
 #messages-wrap { flex: 1; overflow-y: auto; padding: 14px 18px; }
