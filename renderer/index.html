@@ -259,6 +259,7 @@
       <button class="settings-tab" data-section="storage">💾 Storage & data</button>
       <button class="settings-tab" data-section="shortcuts">⌨️ Shortcuts</button>
       <button class="settings-tab" data-section="ai">🧠 AI</button>
+      <button class="settings-tab" data-section="diagnostics">🩺 Diagnostics</button>
       <button class="settings-tab" data-section="about">ℹ️ About</button>
     </aside>
     <section class="settings-body">
@@ -332,6 +333,17 @@
         <button id="ai-save" class="btn primary" style="width:100%;margin-top:12px">Save AI settings</button>
       </div>
 
+      <div class="settings-section" data-section-panel="diagnostics">
+        <h2>Device diagnostics</h2>
+        <p class="hint">Check this Mac, Liquid WhatsApp, permissions, graphics and performance before troubleshooting.</p>
+        <div id="diagnostics-grid" class="diagnostics-grid"></div>
+        <div class="row diagnostics-actions">
+          <button id="diagnostics-run" class="btn primary">Run full diagnostic</button>
+          <button id="diagnostics-copy" class="btn ghost">Copy report</button>
+        </div>
+        <pre id="diagnostics-report" class="diagnostics-report">Press “Run full diagnostic” to collect a local health report.</pre>
+      </div>
+
       <div class="settings-section" data-section-panel="about">
         <h2>About Liquid WhatsApp</h2>
         <div class="about-brand"><div class="logo small-logo">L</div><div><strong>Liquid WhatsApp</strong><div class="hint">Unofficial desktop client for older Macs</div></div></div>
@@ -349,7 +361,7 @@
           <p id="update-status" class="hint">Liquid WhatsApp checks GitHub Releases quietly for new Intel macOS versions.</p>
           <div class="row"><button id="check-updates" class="btn ghost">Check for updates</button></div>
         </div>
-        <div class="about-meta">Liquid WhatsApp v2.2.2 · macOS Catalina / Intel · Unofficial</div>
+        <div class="about-meta">Liquid WhatsApp v2.2.3 · macOS Catalina / Intel · Unofficial</div>
       </div>
 
       <div class="settings-actions"><button id="settings-save" class="btn primary">Save settings</button></div>
