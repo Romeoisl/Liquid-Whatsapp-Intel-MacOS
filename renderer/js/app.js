@@ -158,6 +158,7 @@ function wireEvents() {
     $('callContactName').textContent = cleanNum
     $('callAvatarInitial').textContent = ui.initials(cleanNum)
     $('callBadgeType').textContent = activeCallVideo ? 'Incoming video call' : 'Incoming voice call'
+    $('callRemoteVideo').classList.add('hidden')
     $('btnBannerAccept').classList.remove('hidden')
     $('btnBannerDecline').textContent = 'Decline'
 
