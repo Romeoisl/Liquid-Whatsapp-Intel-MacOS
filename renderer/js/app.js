@@ -326,6 +326,51 @@ function renderRemoteCallVideo(frame) {
 }
 
 function wireStaticUI() {
+  api.on('update-available', async (info) => {
+    const version = info?.version || 'new'
+    const status = $('update-status')
+    if (status) status.textContent = `Version ${version} is available. Download it when you're ready.`
+    const choice = await ui.confirm?.(
+      `Liquid WhatsApp ${version} is available. Download the update now? The updater uses differential downloads when supported, so it can avoid re-downloading unchanged blocks.`,
+      'Update available'
+    )
+    if (choice === false) return
+    try {
+      await window.liquid.downloadUpdate()
+      if (status) status.textContent = `Downloading Liquid WhatsApp ${version}…`
+    } catch (e) {
+      ui.toast(e?.message || 'Could not start the update download')
+    }
+  })
+  api.on('update-progress', (p) => {
+    const status = $('update-status')
+    if (!status) return
+    const pct = Math.max(0, Math.min(100, Number(p?.percent) || 0))
+    status.textContent = `Downloading update… ${pct.toFixed(0)}%`
+  })
+  api.on('update-downloaded', async (info) => {
+    const version = info?.version || 'new'
+    const status = $('update-status')
+    if (status) status.textContent = `Update ${version} is ready to install.`
+    const choice = await ui.confirm?.(
+      `Liquid WhatsApp ${version} is downloaded and ready. Install it now and restart the app?`,
+      'Update ready'
+    )
+    if (choice === false) return
+    try { await window.liquid.installUpdate() } catch (e) { ui.toast(e?.message || 'Could not install the update') }
+  })
+  api.on('update-error', (e) => {
+    const status = $('update-status')
+    if (status) status.textContent = 'Update check/download failed. You can try again later.'
+  })
+  api.on('update-cancelled', () => {
+    const status = $('update-status')
+    if (status) status.textContent = 'Update download cancelled.'
+  })
+  api.on('update-not-available', () => {
+    const status = $('update-status')
+    if (status) status.textContent = `Liquid WhatsApp is up to date (v${'')}`
+  })
   $('btn-voice').addEventListener('click', () => voiceRecorder ? finishVoiceNote(true) : startVoiceNote())
   $('voice-cancel').addEventListener('click', cancelVoiceNote)
   $('voice-send').addEventListener('click', () => finishVoiceNote(true))
@@ -335,6 +380,16 @@ function wireStaticUI() {
     e.preventDefault()
     const url = link.dataset.url
     if (url) window.liquid.openExternal(url)
+  })
+  $('check-updates')?.addEventListener('click', async () => {
+    const status = $('update-status')
+    if (status) status.textContent = 'Checking GitHub Releases…'
+    try {
+      await window.liquid.checkForUpdates()
+    } catch (e) {
+      if (status) status.textContent = 'Could not check for updates.'
+      ui.toast(e?.message || 'Could not check for updates')
+    }
   })
   $('login-btn').addEventListener('click', doPair)
   $('login-number').addEventListener('keydown', (e) => { if (e.key === 'Enter') doPair() })
