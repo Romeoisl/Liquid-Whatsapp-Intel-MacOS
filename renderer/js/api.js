@@ -3,7 +3,7 @@ const api = {
   handlers: { 
     connection: [], chats: [], messages: [], 
     presence: [], settings: [], schedules: [], calls: [],
-    call: [], outbox: []
+    call: [], 'call-state': [], 'call-error': [], 'call-audio': [], outbox: []
   },
 
   async init() {
@@ -52,6 +52,9 @@ const api = {
 
     // Securely listen for secure inbound call network rings passing through the bridge wrapper
     window.liquid.onOutbox((data) => this._emit('outbox', data))
+    window.liquid.onCallState((state) => this._emit('call-state', state))
+    window.liquid.onCallError((error) => this._emit('call-error', error))
+    window.liquid.onCallAudio((audio) => this._emit('call-audio', audio))
     window.liquid.onCallRing((callData) => {
       console.log(`[API Interface] Intercepted active ring handshake protocol request token: ${callData.id}`)
       this._emit('call', callData)
