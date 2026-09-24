@@ -21,6 +21,8 @@ const ffmpegImport = 'import { createRequire } from "node:module";\\nconst requi
 
 const audio = path.join(baileysRoot, 'lib', 'Voip', 'audio-feeder.mjs')
 const video = path.join(baileysRoot, 'lib', 'Voip', 'video-feeder.mjs')
+const engine = path.join(baileysRoot, 'lib', 'Voip', 'wasm-engine.mjs')
+const voip = path.join(baileysRoot, 'lib', 'Voip', 'index.mjs')
 
 patch(audio, [
   ['import { spawn } from "node:child_process";', 'import { spawn } from "node:child_process";\\n' + ffmpegImport],
@@ -39,3 +41,15 @@ patch(video, [
 ])
 
 console.log('[Liquid WhatsApp] VoIP capture patch ready')
+
+patch(engine, [
+  ['else if (callbackName === "onCallEvent") {',
+   'else if (callbackName === "onVideoFrameWasmToJs") {\\n            callbacks.onVideoFrame?.(data);\\n        }\\n        else if (callbackName === "onCallEvent") {']
+])
+
+patch(voip, [
+  ['onAudioPlaybackData: (audioData) => this.#handleAudioPlayback(audioData, callId),',
+   'onAudioPlaybackData: (audioData) => this.#handleAudioPlayback(audioData, callId),\\n                onVideoFrame: (frame) => this.#handleVideoPlayback(frame, callId),'],
+  ['    #handleAudioPlayback = (audioData, callId) => {',
+   '    #handleVideoPlayback = (frame, callId) => {\\n        if (callId) {\\n            const call = this.#activeCalls.get(callId);\\n            if (call && !call.ended) call.emit("video", frame);\\n        }\\n    };\\n\\n    #handleAudioPlayback = (audioData, callId) => {']
+])
