@@ -97,12 +97,9 @@ function registerIpc() {
   ipcMain.handle('core:logout', safeHandler(() => core.logout()))
   ipcMain.handle('chat:set-active', (_e, jid) => core.setActiveJid(jid))
 
-  ipcMain.handle('call:action', safeHandler(async (_e, action, callId, targetJid) => {
+  ipcMain.handle('call:action', safeHandler(async (_e, action, callId, targetJid, isVideo) => {
     if (action === 'reject' || action === 'hangup') {
-      await core.rejectCall(callId, targetJid)
-      return { ok: true }
-    }
-    throw new Error('Real WhatsApp voice/video media calls are not supported by the Baileys protocol layer used by this app. Incoming call signaling can be detected, but accepting/starting a real media call requires the official WhatsApp call stack.')
+      return core.callAction(action, callId, targetJid, !!isVideo)
   }))
 
   ipcMain.handle('chat:send-text', safeHandler((_e, jid, text, quoted) => core.sendText(jid, text, quoted)))
@@ -163,7 +160,7 @@ function registerIpc() {
   ipcMain.handle('chat:delete', safeHandler((_e, jid, id) => core.deleteMessage(jid, id)))
   ipcMain.handle('chat:react', safeHandler((_e, jid, msg, reaction) => core.reactMessage(jid, msg, reaction)))
   ipcMain.handle('chat:forward', safeHandler((_e, msg, targetJid) => core.forwardMessage(msg.jid, msg, targetJid)))
-  ipcMain.handle('chat:poll', safeHandler((_e, jid, name, options) => core.sendPoll(jid, name, options)))
+  ipcMain.handle('chat:poll', safeHandler((_e, jid, name, options, pollSettings) => core.sendPoll(jid, name, options, pollSettings)))
   ipcMain.handle('chat:viewonce', safeHandler((_e, jid, text) => core.sendViewOnce(jid, text)))
   ipcMain.handle('chat:broadcast', safeHandler((_e, jids, text) => core.sendBroadcast(jids, text)))
   ipcMain.handle('chat:mention-all', safeHandler((_e, jid, text) => core.sendMentionAll(jid, text)))
@@ -197,6 +194,10 @@ function registerIpc() {
   ipcMain.handle('settings:get', () => core.getSettings())
   ipcMain.handle('settings:set', safeHandler((_e, patch) => core.setSettings(patch)))
   ipcMain.handle('local:info', () => core.localDatabaseInfo())
+  ipcMain.handle('local:clear-backups', safeHandler(() => core.clearBackups()))
+  ipcMain.handle('calls:history', () => core.getCallHistory())
+  ipcMain.handle('calls:clear-history', safeHandler(() => core.clearCallHistory()))
+  ipcMain.handle('calls:create-link', safeHandler((_e, type) => core.createCallLink(type))
   ipcMain.handle('local:export', safeHandler(async () => {
     const res = await dialog.showSaveDialog(win, {
       title: 'Export Liquid WhatsApp data',
@@ -232,6 +233,7 @@ core.on('presence', (p) => forward('presence', p))
 core.on('settings', (s) => forward('settings', s))
 core.on('schedules', (s) => forward('schedules', s))
 core.on('call:incoming', (callData) => forward('call:ring', callData))
+core.on('calls', (history) => forward('calls', history))
 
 core.on('notify', (items) => {
   if (core.getSettings().notifications === false || !Notification.isSupported()) return
