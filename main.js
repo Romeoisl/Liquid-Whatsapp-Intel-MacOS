@@ -231,7 +231,7 @@ function registerIpc() {
       process: { cpuPercent: cpu, privateMemory, processCount: metrics.length },
       permissions,
       gpu,
-      connection: { hasSession: core.hasSession(), connected: core.conn?.connection === 'open' },
+      connection: { hasSession: core.hasSession(), connected: core.connection === 'open' },
       performance: { mode: core.getSettings().performanceMode || 'auto' }
     }
   })
