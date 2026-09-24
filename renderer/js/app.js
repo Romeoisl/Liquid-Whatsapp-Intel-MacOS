@@ -5,9 +5,10 @@ let pairingInProgress = false
 function applyPerformanceProfile() {
   const cores = Number(navigator.hardwareConcurrency || 4)
   const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-  const lowPower = cores <= 4 || reduced
+  const mode = Store.settings?.performanceMode || 'auto'
+  const lowPower = mode === 'low' || (mode === 'auto' && (cores <= 4 || reduced))
   document.body.classList.toggle('liquid-performance', lowPower)
-  if (reduced) document.body.classList.add('reduce-motion')
+  document.body.classList.toggle('reduce-motion', reduced || mode === 'low')
 }
 
 async function init() {
@@ -96,7 +97,8 @@ function wireEvents() {
     scheduleChatRender()
   })
   api.on('presence', ({ jid }) => { if (jid === Store.activeJid) renderPresence() })
-  api.on('settings', (s) => { applyTheme(s?.theme || 'system') })
+  api.on('settings', (s) => { applyTheme(s?.theme || 'system'); applyPerformanceProfile() })
+  api.on('calls', (history) => { Store.callHistory = history || [] })
   api.on('open-chat', (jid) => openChat(jid))
   api.on('outbox', ({ count }) => {
     $('outbox-status').textContent = count ? `${count} message${count === 1 ? '' : 's'} queued` : 'Session saved on this Mac'
@@ -259,6 +261,7 @@ function wireStaticUI() {
   $('btn-status').addEventListener('click', openStatusModal)
   $('btn-starred').addEventListener('click', openStarredModal)
   $('btn-settings').addEventListener('click', openSettingsModal)
+  $('btn-calls').addEventListener('click', openCallsModal)
   $('btn-profile').addEventListener('click', openProfileModal)
   $('btn-chat-search').addEventListener('click', openMessageSearchModal)
   $('btn-gallery').addEventListener('click', openGalleryModal)
@@ -606,8 +609,35 @@ function openPollModal() {
     $('poll-go').addEventListener('click', async () => {
       const name = $('poll-name').value.trim()
       const options = $('poll-options').value.split('\n').map((s) => s.trim()).filter(Boolean)
-      if (name && options.length >= 1) { await window.liquid.poll(Store.activeJid, name, options); ui.closeModal() }
+      const selectableCount = Number($('poll-count').value) || 1
+      if (name && options.length >= 2) { await window.liquid.poll(Store.activeJid, name, options, { selectableCount }); ui.closeModal() }
     })
+  })
+}
+
+function formatCallTime(ts) {
+  try { return new Date(Number(ts)).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) } catch (_) { return '' }
+}
+
+async function openCallsModal() {
+  withModal('tpl-calls', async () => {
+    const render = (history) => {
+      const out = $('call-history-list'); out.innerHTML = ''
+      const list = history || []
+      if (!list.length) { out.innerHTML = '<div class="hint">No calls recorded yet.</div>'; return }
+      for (const c of list) {
+        const row = document.createElement('div'); row.className = 'contact-row'
+        const name = Store.chats.find(x => x.id === c.jid)?.name || (c.jid || '').split('@')[0] || 'Unknown'
+        const direction = c.direction === 'outgoing' ? 'Outgoing' : 'Incoming'
+        const type = c.type === 'video' ? 'Video' : 'Voice'
+        row.innerHTML = `<div class="avatar alt-a">${type === 'Video' ? 'V' : '☎'}</div><div style="flex:1;min-width:0"><strong>${ui.esc(name)}</strong><div class="hint">${direction} · ${type} · ${ui.esc(c.status || 'unknown')}<br>${ui.esc(formatCallTime(c.timestamp))}</div></div>`
+        out.appendChild(row)
+      }
+    }
+    render(await window.liquid.callHistory().catch(() => []))
+    $('call-link-audio').onclick = async () => { try { const link = await window.liquid.createCallLink('audio'); window.liquid.copyText(link); ui.toast('Audio call link copied') } catch (e) { ui.toast(e.message) } }
+    $('call-link-video').onclick = async () => { try { const link = await window.liquid.createCallLink('video'); window.liquid.copyText(link); ui.toast('Video call link copied') } catch (e) { ui.toast(e.message) } }
+    $('clear-call-history').onclick = async () => { await window.liquid.clearCallHistory(); render([]); ui.toast('Call history cleared') }
   })
 }
 
@@ -799,6 +829,7 @@ function openSettingsModal() {
     $id('set-preview').checked = s.showPreviews !== false
     $id('set-theme').value = s.theme || 'system'
     $id('set-reduce-motion').checked = !!s.reduceMotion
+    $id('set-performance').value = s.performanceMode || 'auto'
     $id('set-backup').checked = s.backupEnabled !== false
     applyTheme(s.theme || 'system')
 
@@ -833,6 +864,15 @@ function openSettingsModal() {
       if (r?.ok) ui.toast('Backup exported successfully')
     })
 
+    const refreshStorage = async () => {
+      const info = await window.liquid.localInfo()
+      const fmt = (n) => { n = Number(n) || 0; if (n < 1024) return `${n} B`; if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`; if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`; return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB` }
+      $id('local-db-info').innerHTML = `<strong>Local data</strong><br>${info.messages.toLocaleString()} messages · ${info.chats.toLocaleString()} chats · ${info.callHistory.toLocaleString()} calls<br><span class="hint">Total: ${fmt(info.bytes?.total)} · Messages: ${fmt(info.bytes?.messagesDb)} · Backups: ${fmt(info.bytes?.backups)} · Voice notes: ${fmt(info.bytes?.voiceNotes)}</span>`
+    }
+    refreshStorage()
+    $id('storage-refresh').onclick = refreshStorage
+    $id('storage-clear-backups').onclick = async () => { if (!confirm('Delete only local backup files? Your WhatsApp session and messages will remain.')) return; await window.liquid.clearBackups(); await refreshStorage(); ui.toast('Backups cleared') }
+
     $id('settings-save').addEventListener('click', async () => {
       await window.liquid.setSettings({
         notifications: $id('set-notif').checked,
@@ -841,10 +881,12 @@ function openSettingsModal() {
         showPreviews: $id('set-preview').checked,
         theme: $id('set-theme').value,
         reduceMotion: $id('set-reduce-motion').checked,
+        performanceMode: $id('set-performance').value,
         backupEnabled: $id('set-backup').checked,
         ai: { provider: $id('ai-provider').value, model: $id('ai-model').value.trim(), key: $id('ai-key').value.trim() }
       })
       applyTheme($id('set-theme').value)
+      applyPerformanceProfile()
       ui.toast('Settings saved')
     })
 
