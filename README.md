@@ -28,6 +28,7 @@ Release assets are built for **Intel x64 Macs**:
 - DMG and ZIP packages
 - Minimum macOS version: 10.15
 - Apple Silicon is not currently packaged
+- Built-in GitHub Release updater for packaged Intel builds
 
 ## Features
 
@@ -118,6 +119,12 @@ GitHub Releases
 ```
 
 GitHub Releases are the **only versioned download system** for the project. There is no separate release website.
+
+### Automatic updates
+
+Packaged Intel macOS builds quietly check GitHub Releases for new versions after startup and periodically while the app is running. When a new version is found, the app asks before downloading it. After the download finishes, it asks before restarting to install the update.
+
+The updater uses electron-builder/electron-updater's differential-download support where available, using update metadata and block maps so unchanged portions do not have to be downloaded again. This can reduce data usage, but it is **not guaranteed to download only the exact source-code changes**; the amount downloaded depends on which packaged files changed between releases. GitHub Releases also need the generated macOS update metadata and artifacts from the release workflow.
 
 You can also publish locally when `GH_TOKEN` is configured:
 
