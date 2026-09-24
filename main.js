@@ -257,7 +257,7 @@ app.whenReady().then(() => {
   buildMenu()
   registerIpc()
   createWindow()
-  core.start().catch((e) => console.error('[core] start failed:', e.message))
+  // Do not create an anonymous WhatsApp socket on the login screen.\n  // The pairing flow creates its own socket only after the user submits a number.\n  if (core.hasSession()) {\n    core.start().catch((e) => console.error('[core] start failed:', e.message))\n  }
   backupTimer = setInterval(() => {
     const settings = core.getSettings()
     if (settings.backupEnabled === false) return
