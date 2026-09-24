@@ -984,7 +984,7 @@ class WhatsAppCore extends EventEmitter {
 
   async setSettings(patch) {
     this.settings = { ...this.settings, ...(patch || {}) }
-    fs.writeFileSync(this.settingsFile, JSON.stringify(this.settings, null, 2))
+    await fs.promises.writeFile(this.settingsFile, JSON.stringify(this.settings, null, 2), 'utf8')
     this.emit('settings', this.settings)
     return this.settings
   }
