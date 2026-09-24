@@ -270,8 +270,22 @@ body.liquid-tinted {
   --lg-tint: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 body.liquid-performance {
-  --lg-blur: 10px;
-  --lg-sat: 1.1;
+  --lg-blur: 6px;
+  --lg-sat: 1;
+  --glass-shadow: 0 8px 24px rgba(20, 60, 45, 0.10);
+}
+
+body.liquid-performance .glass-panel,
+body.liquid-performance #sidebar,
+body.liquid-performance #chat-panel,
+body.liquid-performance #chat-header,
+body.liquid-performance #composer,
+body.liquid-performance .modal,
+body.liquid-performance .popover,
+body.liquid-performance .search-panel {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: var(--glass-strong);
 }
 
 .glass-panel,
