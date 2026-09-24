@@ -62,7 +62,9 @@ function renderMe() {
   }
   const c = $('conn-status')
   c.className = 'conn ' + (Store.conn === 'open' ? 'online' : Store.conn === 'close' || Store.conn === 'idle' ? 'offline' : '')
-  c.innerHTML = '<span class="dot"></span> ' + (Store.conn === 'open' ? ' Online' : Store.conn === 'connecting' ? ' Connecting…' : Store.conn === 'close' ? ' Reconnecting…' : ' Offline')
+  const offline = Store.conn !== 'open'
+  const localText = offline && Store.chats.length ? ' Offline · local history' : ' Offline'
+  c.innerHTML = '<span class="dot"></span> ' + (Store.conn === 'open' ? ' Online' : Store.conn === 'connecting' ? ' Connecting…' : Store.conn === 'close' ? ' Reconnecting…' : localText)
 }
 
 // Variables to capture active phone network call signaling states
