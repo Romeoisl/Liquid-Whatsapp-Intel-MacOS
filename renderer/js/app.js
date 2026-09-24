@@ -69,6 +69,9 @@ function renderMe() {
 let activeCallId = null
 let activeCallJid = null
 let activeCallVideo = false
+let activeCallDirection = 'incoming'
+let callAudioContext = null
+let callAudioNextTime = 0
 let quotedMessage = null
 
 function wireEvents() {
@@ -99,6 +102,43 @@ function wireEvents() {
   api.on('presence', ({ jid }) => { if (jid === Store.activeJid) renderPresence() })
   api.on('settings', (s) => { applyTheme(s?.theme || 'system'); applyPerformanceProfile() })
   api.on('calls', (history) => { Store.callHistory = history || [] })
+  api.on('call-state', (state) => {
+    activeCallId = state?.id || activeCallId
+    activeCallJid = state?.jid || activeCallJid
+    activeCallVideo = state?.type === 'video'
+    activeCallDirection = state?.direction || activeCallDirection
+    if (state?.status === 'ended' || state?.status === 'error') {
+      $('liquidCallBanner').classList.add('liquid-banner-hidden')
+      return
+    }
+    const name = Store.chats.find((x) => x.id === activeCallJid)?.name || (activeCallJid || '').split('@')[0] || 'WhatsApp contact'
+    $('callContactName').textContent = name
+    $('callAvatarInitial').textContent = ui.initials(name)
+    $('callBadgeType').textContent = `${activeCallVideo ? 'Video' : 'Voice'} call · ${state?.status || 'connecting'}`
+    $('btnBannerAccept').classList.toggle('hidden', activeCallDirection !== 'incoming' || state?.status !== 'ringing')
+    $('btnBannerDecline').textContent = 'Hang up'
+    $('liquidCallBanner').classList.remove('liquid-banner-hidden')
+  })
+  api.on('call-error', (error) => ui.toast(error?.message || 'WhatsApp call failed'))
+  api.on('call-audio', (packet) => {
+    const pcm = packet?.pcm instanceof Float32Array
+      ? packet.pcm
+      : (packet?.pcm?.buffer instanceof ArrayBuffer ? new Float32Array(packet.pcm.buffer) : null)
+    if (!pcm?.length) return
+    try {
+      if (!callAudioContext) callAudioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: packet.sampleRate || 16000 })
+      if (callAudioContext.state === 'suspended') callAudioContext.resume().catch(() => {})
+      const buffer = callAudioContext.createBuffer(1, pcm.length, packet.sampleRate || 16000)
+      buffer.copyToChannel(pcm, 0)
+      const source = callAudioContext.createBufferSource()
+      source.buffer = buffer
+      source.connect(callAudioContext.destination)
+      const now = callAudioContext.currentTime
+      callAudioNextTime = Math.max(callAudioNextTime, now + 0.01)
+      source.start(callAudioNextTime)
+      callAudioNextTime += buffer.duration
+    } catch (_) {}
+  })
   api.on('open-chat', (jid) => openChat(jid))
   api.on('outbox', ({ count }) => {
     $('outbox-status').textContent = count ? `${count} message${count === 1 ? '' : 's'} queued` : 'Session saved on this Mac'
@@ -109,11 +149,14 @@ function wireEvents() {
     activeCallId = callData.id
     activeCallJid = callData.from
     activeCallVideo = callData.isVideo
+    activeCallDirection = 'incoming'
 
     const cleanNum = activeCallJid.split('@')[0]
     $('callContactName').textContent = cleanNum
     $('callAvatarInitial').textContent = ui.initials(cleanNum)
-    $('callBadgeType').textContent = activeCallVideo ? 'Liquid Video Connection' : 'Liquid Voice Connection'
+    $('callBadgeType').textContent = activeCallVideo ? 'Incoming video call' : 'Incoming voice call'
+    $('btnBannerAccept').classList.remove('hidden')
+    $('btnBannerDecline').textContent = 'Decline'
 
     // Animates the banner cleanly below Catalina's hiddenInset drag margin region
     $('liquidCallBanner').classList.remove('liquid-banner-hidden')
