@@ -3,7 +3,7 @@ const api = {
   handlers: { 
     connection: [], chats: [], messages: [], 
     presence: [], settings: [], schedules: [], calls: [],
-    call: [], 'call-state': [], 'call-error': [], 'call-audio': [], 'call-video': [], outbox: []
+    call: [], 'call-state': [], 'call-error': [], 'call-audio': [], 'call-video': [], outbox: [], 'update-checking': [], 'update-available': [], 'update-not-available': [], 'update-progress': [], 'update-downloaded': [], 'update-cancelled': [], 'update-error': []
   },
 
   async init() {
@@ -56,6 +56,13 @@ const api = {
     window.liquid.onCallError((error) => this._emit('call-error', error))
     window.liquid.onCallAudio((audio) => this._emit('call-audio', audio))
     window.liquid.onCallVideo((video) => this._emit('call-video', video))
+    window.liquid.onUpdateChecking((data) => this._emit('update-checking', data))
+    window.liquid.onUpdateAvailable((data) => this._emit('update-available', data))
+    window.liquid.onUpdateNotAvailable((data) => this._emit('update-not-available', data))
+    window.liquid.onUpdateProgress((data) => this._emit('update-progress', data))
+    window.liquid.onUpdateDownloaded((data) => this._emit('update-downloaded', data))
+    window.liquid.onUpdateCancelled((data) => this._emit('update-cancelled', data))
+    window.liquid.onUpdateError((data) => this._emit('update-error', data))
     window.liquid.onCallRing((callData) => {
       console.log(`[API Interface] Intercepted active ring handshake protocol request token: ${callData.id}`)
       this._emit('call', callData)
