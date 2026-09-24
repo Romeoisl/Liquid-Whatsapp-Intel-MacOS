@@ -50,6 +50,7 @@ contextBridge.exposeInMainWorld('liquid', {
   getSettings: () => invoke('settings:get'),
   setSettings: (patch) => invoke('settings:set', patch),
   localInfo: () => invoke('local:info'),
+  diagnostics: () => invoke('diagnostics:get'),
   clearBackups: () => invoke('local:clear-backups'),
   callHistory: () => invoke('calls:history'),
   clearCallHistory: () => invoke('calls:clear-history'),
