@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Liquid WhatsApp — Releases</title>
+  <meta name="description" content="Download Liquid WhatsApp releases for Intel Macs running macOS Catalina.">
+  <style>
+    :root { color-scheme: dark; font-family: -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; background:linear-gradient(145deg,#08120e,#10261c 55%,#07100c); color:#eef7f1; }
+    main { width:min(980px,92vw); margin:0 auto; padding:56px 0 80px; }
+    .hero { margin-bottom:30px; }
+    .eyebrow { color:#8de0ae; font-weight:700; letter-spacing:.12em; text-transform:uppercase; font-size:12px; }
+    h1 { font-size:clamp(38px,7vw,72px); line-height:1; margin:10px 0 14px; letter-spacing:-.055em; }
+    p { color:#b8c9c0; line-height:1.65; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:20px; }
+    a.button { display:inline-flex; padding:11px 16px; border:1px solid #284638; border-radius:12px; color:#f4fff7; text-decoration:none; background:#12271d; }
+    a.button.primary { background:#dff9e9; color:#0a1a11; border-color:#dff9e9; font-weight:700; }
+    .status { padding:14px 16px; border:1px solid #244233; border-radius:14px; background:#0c1b14; margin:24px 0; color:#b8c9c0; }
+    .release { border:1px solid #244233; background:rgba(13,31,22,.88); border-radius:20px; padding:22px; margin:16px 0; box-shadow:0 12px 40px rgba(0,0,0,.18); }
+    .release-head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; flex-wrap:wrap; }
+    .version { font-size:25px; font-weight:800; }
+    .date { color:#7f9689; font-size:13px; margin-top:5px; }
+    .badge { border:1px solid #345947; border-radius:999px; padding:5px 9px; color:#a9efc2; font-size:12px; }
+    .assets { display:flex; gap:10px; flex-wrap:wrap; margin-top:18px; }
+    .asset { display:flex; flex-direction:column; gap:4px; min-width:190px; padding:13px; border-radius:13px; background:#11271c; border:1px solid #284638; color:#f4fff7; text-decoration:none; }
+    .asset small { color:#7f9689; }
+    .empty { color:#9fb3a8; }
+    footer { margin-top:35px; color:#70867a; font-size:13px; }
+    code { color:#baf2cd; }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="eyebrow">Liquid WhatsApp</div>
+    <h1>Releases</h1>
+    <p>Download versioned Catalina/Intel builds. Every published version keeps its own GitHub Release and download files.</p>
+    <div class="actions">
+      <a class="button primary" id="latestBtn" href="#">Latest release</a>
+      <a class="button" href="https://github.com/Romeoisl/Whatsapp-UNOFFICIAL-/releases">All GitHub releases</a>
+    </div>
+  </section>
+  <div id="status" class="status">Loading releases…</div>
+  <section id="releases"></section>
+  <footer>Liquid WhatsApp is unofficial software and is not affiliated with or endorsed by Meta.</footer>
+</main>
+<script>
+const API='https://api.github.com/repos/Romeoisl/Whatsapp-UNOFFICIAL-/releases?per_page=30';
+const statusEl=document.getElementById('status');
+const list=document.getElementById('releases');
+const latestBtn=document.getElementById('latestBtn');
+const wanted=new URLSearchParams(location.search).get('version');
+
+function esc(value){
+  return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function bytes(n){
+  if(!n) return '';
+  const units=['B','KB','MB','GB']; let i=0,x=n;
+  while(x>=1024&&i<units.length-1){x/=1024;i++;}
+  return x.toFixed(i?1:0)+' '+units[i];
+}
+function render(releases){
+  const filtered=wanted ? releases.filter(r=>r.tag_name===wanted || r.name===wanted || r.tag_name==='v'+wanted) : releases;
+  if(!filtered.length){
+    statusEl.textContent=wanted ? 'That version was not found. Showing all published versions.' : 'No published releases yet.';
+  } else {
+    statusEl.textContent=filtered.length+' version'+(filtered.length===1?'':'s')+' available.';
+  }
+  const visible=filtered.length?filtered:releases;
+  list.innerHTML=visible.map((r,i)=>{
+    const assets=(r.assets||[]).filter(a=>/\.dmg$|\.zip$/i.test(a.name));
+    const links=assets.length?assets.map(a=>'<a class="asset" href="'+esc(a.browser_download_url)+'"><strong>'+esc(a.name)+'</strong><small>'+bytes(a.size)+' · '+a.download_count+' downloads</small></a>').join(''):'<div class="empty">No DMG/ZIP assets attached yet.</div>';
+    return '<article class="release"><div class="release-head"><div><div class="version">'+esc(r.name||r.tag_name)+'</div><div class="date">'+new Date(r.published_at||r.created_at).toLocaleDateString()+'</div></div><span class="badge">'+(i===0&&!wanted?'Latest':'Published')+'</span></div><div class="assets">'+links+'</div></article>';
+  }).join('');
+  if(releases[0]) latestBtn.href=releases[0].html_url;
+}
+fetch(API,{headers:{Accept:'application/vnd.github+json'}})
+  .then(r=>{if(!r.ok) throw new Error('GitHub API returned '+r.status); return r.json();})
+  .then(data=>render(data.filter(r=>!r.draft)))
+  .catch(err=>{statusEl.textContent='Could not load releases right now. You can use the GitHub Releases page below.'; list.innerHTML='<p class="empty">'+esc(err.message)+'</p>'; latestBtn.href='https://github.com/Romeoisl/Whatsapp-UNOFFICIAL-/releases';});
+</script>
+</body>
+</html>
