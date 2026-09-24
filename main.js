@@ -53,7 +53,7 @@ function openWhatsAppWebCall(targetJid, isVideo = false) {
   }
 
   const rawNumber = jid.endsWith('@s.whatsapp.net') ? jid.slice(0, -'@s.whatsapp.net'.length) : jid
-  const number = rawNumber.split(':')[0].replace(/\\D/g, '')
+  const number = rawNumber.split(':')[0].replace(/\D/g, '')
   if (!number) throw new Error('Could not determine the contact phone number')
 
   const callUrl = new URL('https://web.whatsapp.com/send')
