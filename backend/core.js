@@ -498,6 +498,9 @@ class WhatsAppCore extends EventEmitter {
 
   setActiveJid(jid) {
     this.activeJid = jid || null
+    if (jid && !jid.endsWith('@g.us') && jid !== 'status@broadcast' && this.sock?.presenceSubscribe) {
+      this.sock.presenceSubscribe(jid).catch(() => {})
+    }
     if (jid) {
       const chat = this.chats.get(jid)
       if (chat) {
