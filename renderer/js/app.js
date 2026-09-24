@@ -79,6 +79,7 @@ let callVideoFrameBusy = false
 let quotedMessage = null
 let pingTimer = null
 let pingRequestInFlight = false
+const friendPresenceSeenAt = new Map()
 
 function wireEvents() {
   api.on('connection', (u) => {
@@ -105,7 +106,13 @@ function wireEvents() {
     }
     scheduleChatRender()
   })
-  api.on('presence', ({ jid }) => { if (jid === Store.activeJid) renderPresence() })
+  api.on('presence', ({ jid, state }) => {
+    if (jid) friendPresenceSeenAt.set(jid, Date.now())
+    if (jid === Store.activeJid) {
+      renderPresence()
+      renderFriendSignal()
+    }
+  })
   api.on('settings', (s) => {
     applyTheme(s?.theme || 'system')
     window.liquidGlass?.apply(s?.glassStyle || 'tinted')
@@ -545,6 +552,7 @@ function openChat(jid) {
   $('btn-mention-all').classList.toggle('hidden', !jid.endsWith('@g.us'))
   renderPresence()
   updateChatPing()
+  renderFriendSignal()
   renderMessages()
   startChatPing()
   window.liquid.loadChat(jid).then((msgs) => {
@@ -552,6 +560,55 @@ function openChat(jid) {
     scheduleMessageRender()
     scheduleChatRender()
   }).catch(() => {})
+}
+
+function friendSignalLevel(jid) {
+  if (!isPrivateChat(jid)) return 0
+  const state = Store.presence.get(jid)
+  if (!['online', 'typing', 'recording'].includes(state)) return 0
+  const seen = friendPresenceSeenAt.get(jid) || 0
+  const age = seen ? Date.now() - seen : Infinity
+  if (age <= 10000) return 4
+  if (age <= 20000) return 3
+  if (age <= 40000) return 2
+  return 1
+}
+
+function renderFriendSignal() {
+  const jid = Store.activeJid
+  const el = $('chat-friend-signal')
+  if (!el || !isPrivateChat(jid)) {
+    if (el) {
+      el.classList.add('hidden')
+      el.innerHTML = ''
+    }
+    return
+  }
+
+  const state = Store.presence.get(jid)
+  const level = friendSignalLevel(jid)
+  el.innerHTML = ''
+  for (let i = 1; i <= 4; i++) {
+    const bar = document.createElement('span')
+    bar.className = 'ping-bar' + (i <= level ? ' active' : '')
+    el.appendChild(bar)
+  }
+
+  const text = document.createElement('span')
+  text.className = 'ping-ms'
+  text.textContent = level ? ' Friend' : ' Friend —'
+  el.appendChild(text)
+
+  if (level) {
+    const age = Math.max(0, Date.now() - (friendPresenceSeenAt.get(jid) || Date.now()))
+    el.title = 'Friend connection signal: ' + (age <= 10000 ? 'fresh' : age <= 20000 ? 'recent' : age <= 40000 ? 'stale' : 'very stale')
+  } else {
+    el.title = state === 'offline'
+      ? 'Friend appears offline or their presence is unavailable'
+      : 'Friend connection signal unavailable'
+  }
+  el.setAttribute('aria-label', el.title)
+  el.classList.remove('hidden')
 }
 
 function stopChatPing() {
@@ -633,7 +690,11 @@ function startChatPing() {
   stopChatPing()
   if (!isPrivateChat(Store.activeJid)) return
   updateChatPing()
-  pingTimer = setInterval(updateChatPing, 5000)
+  renderFriendSignal()
+  pingTimer = setInterval(() => {
+    updateChatPing()
+    renderFriendSignal()
+  }, 5000)
 }
 
 function renderPresence() {
