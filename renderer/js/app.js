@@ -18,6 +18,7 @@ async function init() {
     wireEvents()
     wireStaticUI()
     applyTheme(boot.settings?.theme || 'system')
+    window.liquidGlass?.apply(boot.settings?.glassStyle || 'tinted')
     applyPerformanceProfile()
     if (boot.hasSession) enterApp()
     else showLogin()
@@ -103,25 +104,17 @@ function wireEvents() {
     scheduleChatRender()
   })
   api.on('presence', ({ jid }) => { if (jid === Store.activeJid) renderPresence() })
-  api.on('settings', (s) => { applyTheme(s?.theme || 'system'); applyPerformanceProfile() })
+  api.on('settings', (s) => {
+    applyTheme(s?.theme || 'system')
+    window.liquidGlass?.apply(s?.glassStyle || 'tinted')
+    applyPerformanceProfile()
+  })
   api.on('calls', (history) => { Store.callHistory = history || [] })
   api.on('call-state', (state) => {
     activeCallId = state?.id || activeCallId
     activeCallJid = state?.jid || activeCallJid
     activeCallVideo = state?.type === 'video'
     activeCallDirection = state?.direction || activeCallDirection
-    if (state?.status === 'ended' || state?.status === 'error') {
-      $('liquidCallBanner').classList.add('liquid-banner-hidden')
-      $('callRemoteVideo').classList.add('hidden')
-      return
-    }
-    const name = Store.chats.find((x) => x.id === activeCallJid)?.name || (activeCallJid || '').split('@')[0] || 'WhatsApp contact'
-    $('callContactName').textContent = name
-    $('callAvatarInitial').textContent = ui.initials(name)
-    $('callBadgeType').textContent = `${activeCallVideo ? 'Video' : 'Voice'} call · ${state?.status || 'connecting'}`
-    $('btnBannerAccept').classList.toggle('hidden', activeCallDirection !== 'incoming' || state?.status !== 'ringing')
-    $('btnBannerDecline').textContent = 'Hang up'
-    $('liquidCallBanner').classList.remove('liquid-banner-hidden')
   })
   api.on('call-error', (error) => ui.toast(error?.message || 'WhatsApp call failed'))
   api.on('call-video', (frame) => renderRemoteCallVideo(frame))
@@ -149,24 +142,6 @@ function wireEvents() {
     $('outbox-status').textContent = count ? `${count} message${count === 1 ? '' : 's'} queued` : 'Session saved on this Mac'
   })
 
-  // Intercept the API calling signal event to slide the frosted glass banner into view
-  api.on('call', (callData) => {
-    activeCallId = callData.id
-    activeCallJid = callData.from
-    activeCallVideo = callData.isVideo
-    activeCallDirection = 'incoming'
-
-    const cleanNum = activeCallJid.split('@')[0]
-    $('callContactName').textContent = cleanNum
-    $('callAvatarInitial').textContent = ui.initials(cleanNum)
-    $('callBadgeType').textContent = activeCallVideo ? 'Incoming video call' : 'Incoming voice call'
-    $('callRemoteVideo').classList.add('hidden')
-    $('btnBannerAccept').classList.remove('hidden')
-    $('btnBannerDecline').textContent = 'Decline'
-
-    // Animates the banner cleanly below Catalina's hiddenInset drag margin region
-    $('liquidCallBanner').classList.remove('liquid-banner-hidden')
-  })
 }
 
 let voiceRecorder = null
@@ -1098,6 +1073,7 @@ function openSettingsModal() {
     $id('set-sound').checked = s.soundNotifications !== false
     $id('set-preview').checked = s.showPreviews !== false
     $id('set-theme').value = s.theme || 'system'
+    $id('set-glass').value = s.glassStyle || 'tinted'
     $id('set-reduce-motion').checked = !!s.reduceMotion
     $id('set-performance').value = s.performanceMode || 'auto'
     $id('set-backup').checked = s.backupEnabled !== false
@@ -1106,7 +1082,8 @@ function openSettingsModal() {
     const ai = s.ai || {}
     $id('ai-provider').value = ai.provider || 'openai'
     $id('ai-model').value = ai.model || ''
-    $id('ai-key').value = ai.key || ''
+    $id('ai-key').value = ''
+    $id('ai-key').placeholder = ai.keyStored ? 'API key saved securely — enter a new key to replace it' : 'API key (stored securely)'
 
     const privacyMap = {
       'pr-lastseen': 'lastseen', 'pr-online': 'online', 'pr-read': 'read',
@@ -1150,21 +1127,28 @@ function openSettingsModal() {
         soundNotifications: $id('set-sound').checked,
         showPreviews: $id('set-preview').checked,
         theme: $id('set-theme').value,
+        glassStyle: $id('set-glass').value,
         reduceMotion: $id('set-reduce-motion').checked,
         performanceMode: $id('set-performance').value,
         backupEnabled: $id('set-backup').checked,
-        ai: { provider: $id('ai-provider').value, model: $id('ai-model').value.trim(), key: $id('ai-key').value.trim() }
+        ai: { provider: $id('ai-provider').value, model: $id('ai-model').value.trim() }
       })
+      const newAiKey = $id('ai-key').value.trim()
+      if (newAiKey) await window.liquid.setAiKey(newAiKey)
       applyTheme($id('set-theme').value)
+      window.liquidGlass?.apply($id('set-glass').value)
       applyPerformanceProfile()
       ui.toast('Settings saved')
     })
 
     $id('ai-save').addEventListener('click', async () => {
       await window.liquid.setSettings({
-        ai: { provider: $id('ai-provider').value, model: $id('ai-model').value.trim(), key: $id('ai-key').value.trim() }
+        ai: { provider: $id('ai-provider').value, model: $id('ai-model').value.trim() }
       })
-      ui.toast('AI settings saved')
+      const newAiKey = $id('ai-key').value.trim()
+      if (newAiKey) await window.liquid.setAiKey(newAiKey)
+      $id('ai-key').value = ''
+      ui.toast('AI settings saved securely')
     })
 
     $id('settings-logout').addEventListener('click', async () => {
@@ -1220,60 +1204,11 @@ function openAiModal() {
 
 // Completed core asynchronous fetch controller endpoints parsing pipelines 
 async function aiCall(messages) {
-  const ai = Store.settings.ai || {}
-  const provider = ai.provider || 'openai'
-  const key = ai.key
-  const model = ai.model || (provider === 'openai' ? 'gpt-4o-mini' : provider === 'anthropic' ? 'claude-3-5-sonnet' : 'gemini-1.5-flash')
-  
-  if (!key) throw new Error('Set your API key in Settings → AI first')
-  
-  let endpoint = '', headers = {}, body = {}
-  
-  if (provider === 'openai') {
-    endpoint = 'https://api.openai.com/v1/chat/completions'
-    headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }
-    body = { model, messages }
-  } else if (provider === 'anthropic') {
-    endpoint = 'https://api.anthropic.com/v1/messages'
-    headers = { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' }
-    body = { model, max_tokens: 1024, messages }
-  } else if (provider === 'gemini') {
-    endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`
-    headers = { 'Content-Type': 'application/json' }
-    body = { contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })) }
-  }
-
-  const res = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body) })
-  if (!res.ok) throw new Error(`API Error: ${res.statusText}`)
-  const data = await res.json()
-  
-  let outText = ''
-  if (provider === 'openai') outText = data.choices[0].message.content
-  else if (provider === 'anthropic') outText = data.content[0].text
-  else if (provider === 'gemini') outText = data.candidates[0].content.parts[0].text
-  
-  return { text: outText }
+  return window.liquid.aiCall(messages)
 }
 
 async function aiImage(prompt) {
-  const ai = Store.settings.ai || {}
-  if (ai.provider !== 'openai' || !ai.key) {
-    throw new Error('Image generation requires an OpenAI API key with the OpenAI provider selected')
-  }
-  const res = await fetch('https://api.openai.com/v1/images/generations', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${ai.key}`
-    },
-    body: JSON.stringify({ prompt, n: 1, size: '512x512' })
-  })
-  if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(`Image API error (${res.status})${text ? ': ' + text.slice(0, 180) : ''}`)
-  }
-  const data = await res.json()
-  return data.data?.[0]?.url || ''
+  return window.liquid.aiImage(prompt)
 }
 
 window.onload = init
