@@ -14,7 +14,7 @@ All downloadable versions are published through **GitHub Releases**:
 
 **https://github.com/Romeoisl/Whatsapp-MacOS-Intel/releases**
 
-Each release has its own version tag, such as `v2.3.1`, so older versions remain available instead of being replaced by a temporary GitHub Actions artifact.
+Each release has its own version tag, such as `v1.0.0`, so older versions remain available instead of being replaced by a temporary GitHub Actions artifact.
 
 Release assets are built for **Intel x64 Macs**:
 
@@ -55,7 +55,7 @@ Release assets are built for **Intel x64 Macs**:
 - WhatsApp Web calling bridge for supported one-to-one voice/video calls
 - Optional screen/window sharing source selection through the WhatsApp Web calling window
 
-## v2.3.1 Security and Calling Architecture
+## v1.0.0 Security and Calling Architecture
 
 Version 2.3.0 uses a **WhatsApp Web calling bridge** for the desktop call experience.
 
@@ -124,8 +124,8 @@ This creates a local Intel DMG and ZIP without publishing them.
 Update the version in `package.json`, commit it, then create and push a matching semantic version tag:
 
 ```bash
-git tag v2.3.1
-git push origin v2.3.1
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 The GitHub Actions workflow runs for tags matching `v*.*.*`. It:
@@ -140,7 +140,7 @@ For example:
 
 ```text
 GitHub Releases
-└── v2.3.1
+└── v1.0.0
     ├── Liquid-WhatsApp-2.3.0-Catalina-Intel.dmg
     └── Liquid-WhatsApp-2.3.0-x64.zip
 ```
