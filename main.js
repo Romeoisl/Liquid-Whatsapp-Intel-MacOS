@@ -39,7 +39,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       spellcheck: true,
-      sandbox: false
+      sandbox: true
     }
   })
 
