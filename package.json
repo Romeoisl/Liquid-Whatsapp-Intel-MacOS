@@ -1,7 +1,7 @@
 {
   "name": "liquid-whatsapp",
-  "version": "2.3.1",
-  "description": "Liquid WhatsApp desktop client for macOS Catalina and Intel Macs — v2.3.1 security hardening",
+  "version": "1.0.0",
+  "description": "Liquid WhatsApp desktop client for macOS Catalina and Intel Macs — v1.0.0 security hardening",
   "main": "main.js",
   "author": "Gerald(Mateo DEV)",
   "license": "MIT",
