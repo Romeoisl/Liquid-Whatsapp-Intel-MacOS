@@ -283,7 +283,7 @@ function registerIpc() {
     return { ok: true }
   }))
 
-  ipcMain.handle('chat:send-dropped-media', safeHandler((_e, jid, filePath, caption, quoted) => core.sendMedia(jid, filePath, caption || '', quoted)))
+  ipcMain.handle('chat:send-dropped-media', safeHandler((_e, jid, filePath, caption, quoted) => core.sendDroppedMedia(jid, filePath, caption || '', quoted)))
 
   ipcMain.handle('chat:send-media', safeHandler(async (_e, jid, caption, quoted) => {
     const file = await chooseFile('Choose a file', [
