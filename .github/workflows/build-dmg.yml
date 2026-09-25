@@ -76,6 +76,7 @@ jobs:
           echo "Creating release $TAG from commit $GITHUB_SHA"
 
           gh release create "$TAG" dist/*.dmg dist/*.zip \
+            --target "$GITHUB_SHA" \
             --title "Liquid WhatsApp $TAG" \
             --generate-notes
 
