@@ -787,7 +787,6 @@ const quotedRaw = quoted?.id && quoted?.jid ? this._getRawMessage(quoted.jid, qu
       schedules: this.schedules,
       outbox: this.outbox,
       messages: this.localDb.exportData().messages
-      ,settings: (() => { const copy = { ...(this.settings || {}), ai: { ...(this.settings?.ai || {}) } }; delete copy.ai.key; delete copy.ai.keyEncrypted; return copy })()
     }
   }
 
