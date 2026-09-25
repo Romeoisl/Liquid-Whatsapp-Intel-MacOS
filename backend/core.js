@@ -131,8 +131,15 @@ class WhatsAppCore extends EventEmitter {
   async _connect() {
     if (this.sock) return this.sock
 
-    fs.mkdirSync(this.sessionDir, { recursive: true })
+    fs.mkdirSync(this.sessionDir, { recursive: true, mode: 0o700 })
+    try { fs.chmodSync(this.sessionDir, 0o700) } catch (_) {}
     const { state, saveCreds } = await useMultiFileAuthState(this.sessionDir)
+    try {
+      for (const name of fs.readdirSync(this.sessionDir)) {
+        const file = path.join(this.sessionDir, name)
+        if (fs.statSync(file).isFile()) fs.chmodSync(file, 0o600)
+      }
+    } catch (_) {}
 
     this.connection = 'connecting'
     this.emit('connection', { connection: 'connecting' })
@@ -773,13 +780,14 @@ const quotedRaw = quoted?.id && quoted?.jid ? this._getRawMessage(quoted.jid, qu
     return {
       schema: 2,
       exportedAt: new Date().toISOString(),
-      settings: this.settings,
+      settings: (() => { const copy = { ...(this.settings || {}), ai: { ...(this.settings?.ai || {}) } }; delete copy.ai.key; delete copy.ai.keyEncrypted; return copy })(),
       chatMeta: this.chatMeta,
       starred: this.starred,
       callHistory: this.callHistory,
       schedules: this.schedules,
       outbox: this.outbox,
       messages: this.localDb.exportData().messages
+      ,settings: (() => { const copy = { ...(this.settings || {}), ai: { ...(this.settings?.ai || {}) } }; delete copy.ai.key; delete copy.ai.keyEncrypted; return copy })()
     }
   }
 
