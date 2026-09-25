@@ -110,7 +110,7 @@ function openWhatsAppWebCall(targetJid, isVideo = false) {
       session: webSession,
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
       spellcheck: true
     }
   })
@@ -144,16 +144,28 @@ function openWhatsAppWebCall(targetJid, isVideo = false) {
     return { action: 'deny' }
   })
 
-  webCallWin.webContents.on('will-navigate', (event, url) => {
+  const allowWebOrigin = (url) => {
     try {
-      const parsed = new URL(url)
-      if (parsed.origin !== 'https://web.whatsapp.com') {
-        event.preventDefault()
-        if (parsed.protocol === 'https:' || parsed.protocol === 'http:') shell.openExternal(parsed.toString())
-      }
+      return new URL(url).origin === 'https://web.whatsapp.com'
     } catch (_) {
-      event.preventDefault()
+      return false
     }
+  }
+
+  webCallWin.webContents.on('will-navigate', (event, url) => {
+    if (!allowWebOrigin(url)) {
+      event.preventDefault()
+      try {
+        const parsed = new URL(url)
+        if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+          shell.openExternal(parsed.toString())
+        }
+      } catch (_) {}
+    }
+  })
+
+  webCallWin.webContents.on('will-redirect', (event, url) => {
+    if (!allowWebOrigin(url)) event.preventDefault()
   })
 
   webCallWin.on('closed', () => { webCallWin = null })
@@ -488,8 +500,13 @@ function registerIpc() {
   ipcMain.handle('update:install', safeHandler(() => installUpdate()))
 
   ipcMain.handle('external:open', safeHandler((_e, url) => {
-    if (!/^https?:\/\//i.test(String(url))) throw new Error('Only http(s) links can be opened')
-    return shell.openExternal(String(url))
+    const value = String(url || '').trim()
+    let parsed
+    try { parsed = new URL(value) } catch (_) { throw new Error('Invalid external URL') }
+    if (!['https:', 'http:'].includes(parsed.protocol)) {
+      throw new Error('Only http(s) links can be opened')
+    }
+    return shell.openExternal(parsed.toString())
   }))
 }
 
