@@ -388,10 +388,9 @@ class WhatsAppCore extends EventEmitter {
     const list = messages.map((m) => this._msgDto(m)).filter((m) => m.id && m.jid)
     if (!list.length) return
 
-    for (let i = 0; i < messages.length; i++) {
-      const raw = messages[i]
-      const dto = list[i]
-      if (dto) this._rememberRawMessage(dto.jid, dto.id, raw)
+    for (const raw of messages) {
+      const key = raw?.key || {}
+      if (key.remoteJid && key.id) this._rememberRawMessage(key.remoteJid, key.id, raw)
     }
 
     for (const dto of list) {
