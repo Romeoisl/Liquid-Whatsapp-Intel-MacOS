@@ -1150,12 +1150,6 @@ class WhatsAppCore extends EventEmitter {
     }
   }
 
-  _findStoredMessage(jid, id) {
-    if (!jid || !id) return null
-    const list = this.messageStore.get(jid) || []
-    return list.find((m) => m.id === id) || null
-  }
-
   _readJson(file, fallback) {
     try { return JSON.parse(fs.readFileSync(file, 'utf8')) } catch (_) { return fallback }
   }
