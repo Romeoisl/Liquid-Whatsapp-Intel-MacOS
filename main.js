@@ -199,7 +199,7 @@ function buildMenu() {
 }
 
 function registerHandle(channel, listener) {
-  registerHandle(channel, (event, ...args) => {
+  require('electron').ipcMain.handle(channel, (event, ...args) => {
     if (!win || win.isDestroyed() || event.sender !== win.webContents) {
       throw new Error('Unauthorized IPC sender')
     }
