@@ -132,7 +132,7 @@ function openWhatsAppWebCall(targetJid, isVideo = false) {
               session: webSession,
               contextIsolation: true,
               nodeIntegration: false,
-              sandbox: false
+              sandbox: true
             }
           }
         }
