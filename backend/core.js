@@ -585,7 +585,8 @@ class WhatsAppCore extends EventEmitter {
         caption: caption || undefined
       }
     }
-    await this.sock.sendMessage(jid, payload, quoted?.raw ? { quoted: quoted.raw } : {})
+const quotedRaw = quoted?.id && quoted?.jid ? this._getRawMessage(quoted.jid, quoted.id) : null
+    await this.sock.sendMessage(jid, payload, quotedRaw ? { quoted: quotedRaw } : {})
   }
 
   async sendDroppedMedia(jid, filePath, caption = '', quoted) {
@@ -607,7 +608,8 @@ class WhatsAppCore extends EventEmitter {
         caption: caption || undefined
       }
     }
-    await this.sock.sendMessage(jid, payload, quoted?.raw ? { quoted: quoted.raw } : {})
+const quotedRaw = quoted?.id && quoted?.jid ? this._getRawMessage(quoted.jid, quoted.id) : null
+    await this.sock.sendMessage(jid, payload, quotedRaw ? { quoted: quotedRaw } : {})
   }
 
   async sendVoiceNote(jid, filePath, quoted) {
@@ -635,7 +637,7 @@ class WhatsAppCore extends EventEmitter {
         audio: data,
         mimetype: 'audio/ogg; codecs=opus',
         ptt: true
-      }, quoted?.raw ? { quoted: quoted.raw } : {})
+      }, (() => { const quotedRaw = quoted?.id && quoted?.jid ? this._getRawMessage(quoted.jid, quoted.id) : null; return quotedRaw ? { quoted: quotedRaw } : {} })())
     } catch (err) {
       const detail = err?.stderr?.trim() || err?.message || 'FFmpeg conversion failed'
       throw new Error(`Voice note conversion failed: ${detail}`)
