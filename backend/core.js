@@ -72,6 +72,7 @@ class WhatsAppCore extends EventEmitter {
     this.presence = new Map()
     this.groupNames = new Map()
     this.messageStore = new Map()
+    this.rawMessages = new Map()
     this.connectTimer = null
     this.tickBusy = false
     this.settings = this._readJson(this.settingsFile, {
