@@ -782,8 +782,9 @@ class WhatsAppCore extends EventEmitter {
 
   async downloadMedia(msgDto) {
     this._requireOpen()
-    if (!msgDto?.raw) throw new Error('Media source is unavailable')
-    const buf = await downloadMediaMessage(msgDto.raw, 'buffer', {}, { logger })
+    const raw = this._findStoredMessage(msgDto?.jid, msgDto?.id)
+    if (!raw) throw new Error('Media source is unavailable')
+    const buf = await downloadMediaMessage(raw, 'buffer', {}, { logger })
     const mime = msgDto.mime || 'application/octet-stream'
     return { mime, dataUrl: `data:${mime};base64,${buf.toString('base64')}` }
   }
@@ -807,16 +808,18 @@ class WhatsAppCore extends EventEmitter {
 
   async reactMessage(jid, msgDto, reaction) {
     this._requireOpen()
-    if (!msgDto?.raw?.key) throw new Error('Message key is unavailable')
+    const raw = this._findStoredMessage(jid, msgDto?.id)
+    if (!raw?.key) throw new Error('Message key is unavailable')
     await this.sock.sendMessage(jid, {
-      react: { text: reaction || '', key: msgDto.raw.key }
+      react: { text: reaction || '', key: raw.key }
     })
   }
 
   async forwardMessage(jid, msgDto, targetJid) {
     this._requireOpen()
-    if (!msgDto?.raw || !targetJid) throw new Error('Message cannot be forwarded')
-    await this.sock.sendMessage(targetJid, { forward: msgDto.raw })
+    const raw = this._findStoredMessage(jid, msgDto?.id)
+    if (!raw || !targetJid) throw new Error('Message cannot be forwarded')
+    await this.sock.sendMessage(targetJid, { forward: raw })
   }
 
   async sendPoll(jid, name, options, settings = {}) {
@@ -1141,12 +1144,17 @@ class WhatsAppCore extends EventEmitter {
       timestamp: m.messageTimestamp ? Number(m.messageTimestamp) * 1000 : Date.now(),
       text, kind, mime, caption,
       pushName: m.pushName || '',
-      raw: m,
       status: key.fromMe ? (m.status || 'PENDING') : undefined,
       quoted: c.extendedTextMessage?.contextInfo?.quotedMessage
         ? { participant: c.extendedTextMessage.contextInfo.participant || '', text: c.extendedTextMessage.contextInfo.quotedMessage.conversation || c.extendedTextMessage.contextInfo.quotedMessage.extendedTextMessage?.text || '' }
         : null
     }
+  }
+
+  _findStoredMessage(jid, id) {
+    if (!jid || !id) return null
+    const list = this.messageStore.get(jid) || []
+    return list.find((m) => m.id === id) || null
   }
 
   _readJson(file, fallback) {
