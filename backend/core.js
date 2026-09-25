@@ -782,9 +782,8 @@ class WhatsAppCore extends EventEmitter {
 
   async downloadMedia(msgDto) {
     this._requireOpen()
-    const raw = this._findStoredMessage(msgDto?.jid, msgDto?.id)
-    if (!raw) throw new Error('Media source is unavailable')
-    const buf = await downloadMediaMessage(raw, 'buffer', {}, { logger })
+    if (!msgDto?.raw) throw new Error('Media source is unavailable')
+    const buf = await downloadMediaMessage(msgDto.raw, 'buffer', {}, { logger })
     const mime = msgDto.mime || 'application/octet-stream'
     return { mime, dataUrl: `data:${mime};base64,${buf.toString('base64')}` }
   }
@@ -808,18 +807,16 @@ class WhatsAppCore extends EventEmitter {
 
   async reactMessage(jid, msgDto, reaction) {
     this._requireOpen()
-    const raw = this._findStoredMessage(jid, msgDto?.id)
-    if (!raw?.key) throw new Error('Message key is unavailable')
+    if (!msgDto?.raw?.key) throw new Error('Message key is unavailable')
     await this.sock.sendMessage(jid, {
-      react: { text: reaction || '', key: raw.key }
+      react: { text: reaction || '', key: msgDto.raw.key }
     })
   }
 
   async forwardMessage(jid, msgDto, targetJid) {
     this._requireOpen()
-    const raw = this._findStoredMessage(jid, msgDto?.id)
-    if (!raw || !targetJid) throw new Error('Message cannot be forwarded')
-    await this.sock.sendMessage(targetJid, { forward: raw })
+    if (!msgDto?.raw || !targetJid) throw new Error('Message cannot be forwarded')
+    await this.sock.sendMessage(targetJid, { forward: msgDto.raw })
   }
 
   async sendPoll(jid, name, options, settings = {}) {
