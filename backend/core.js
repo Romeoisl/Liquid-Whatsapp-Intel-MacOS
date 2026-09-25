@@ -1144,6 +1144,7 @@ class WhatsAppCore extends EventEmitter {
       timestamp: m.messageTimestamp ? Number(m.messageTimestamp) * 1000 : Date.now(),
       text, kind, mime, caption,
       pushName: m.pushName || '',
+      raw: m,
       status: key.fromMe ? (m.status || 'PENDING') : undefined,
       quoted: c.extendedTextMessage?.contextInfo?.quotedMessage
         ? { participant: c.extendedTextMessage.contextInfo.participant || '', text: c.extendedTextMessage.contextInfo.quotedMessage.conversation || c.extendedTextMessage.contextInfo.quotedMessage.extendedTextMessage?.text || '' }
