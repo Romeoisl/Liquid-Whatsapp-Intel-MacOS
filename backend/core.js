@@ -1,6 +1,7 @@
 const { EventEmitter } = require('events')
 const fs = require('fs')
 const path = require('path')
+const os = require('os')
 const crypto = require('crypto')
 const { execFile } = require('child_process')
 const { promisify } = require('util')
@@ -533,12 +534,29 @@ class WhatsAppCore extends EventEmitter {
     }, quoted?.raw ? { quoted: quoted.raw } : {})
   }
 
+  _readUserMediaFile(filePath, { dropped = false } = {}) {
+    if (!filePath || typeof filePath !== 'string') throw new Error('No file selected')
+    const resolved = path.resolve(filePath)
+    if (dropped) {
+      const home = path.resolve(os.homedir())
+      const allowedRoots = ['Desktop', 'Documents', 'Downloads', 'Movies', 'Music', 'Pictures']
+        .map((name) => path.join(home, name))
+      const allowed = allowedRoots.some((root) => resolved === root || resolved.startsWith(root + path.sep))
+      if (!allowed) throw new Error('Dropped files must come from a standard user media folder')
+    }
+    const stat = fs.statSync(resolved)
+    if (!stat.isFile()) throw new Error('Selected path is not a regular file')
+    if (stat.size > 100 * 1024 * 1024) throw new Error('Media file is too large (maximum 100 MB)')
+    const ext = path.extname(resolved).toLowerCase()
+    const mime = MIME[ext]
+    if (!mime) throw new Error('Unsupported media file type')
+    return { path: resolved, ext, mime, data: fs.readFileSync(resolved) }
+  }
+
   async sendMedia(jid, filePath, caption = '', quoted) {
     this._requireOpen()
-    if (!filePath) throw new Error('No file selected')
-    const ext = path.extname(filePath).toLowerCase()
-    const mime = MIME[ext] || 'application/octet-stream'
-    const data = fs.readFileSync(filePath)
+    const media = this._readUserMediaFile(filePath)
+    const { path: resolved, ext, mime, data } = media
     let payload
 
     if (mime.startsWith('image/')) {
@@ -551,7 +569,29 @@ class WhatsAppCore extends EventEmitter {
       payload = {
         document: data,
         mimetype: mime,
-        fileName: path.basename(filePath),
+        fileName: path.basename(resolved),
+        caption: caption || undefined
+      }
+    }
+    await this.sock.sendMessage(jid, payload, quoted?.raw ? { quoted: quoted.raw } : {})
+  }
+
+  async sendDroppedMedia(jid, filePath, caption = '', quoted) {
+    this._requireOpen()
+    const media = this._readUserMediaFile(filePath, { dropped: true })
+    const { path: resolved, ext, mime, data } = media
+    let payload
+    if (mime.startsWith('image/')) {
+      payload = { image: data, mimetype: mime, caption: caption || undefined }
+    } else if (mime.startsWith('video/')) {
+      payload = { video: data, mimetype: mime, caption: caption || undefined }
+    } else if (mime.startsWith('audio/')) {
+      payload = { audio: data, mimetype: mime, ptt: false }
+    } else {
+      payload = {
+        document: data,
+        mimetype: mime,
+        fileName: path.basename(resolved),
         caption: caption || undefined
       }
     }
