@@ -13,6 +13,12 @@ function run(file, args) {
   }
 }
 
+function outputText(result) {
+  return typeof result === 'string'
+    ? result
+    : ((result?.stderr || '') + (result?.stdout || '')).toString()
+}
+
 function inspectIntegrity(app) {
   const base = {
     version: app.getVersion(),
@@ -23,6 +29,8 @@ function inspectIntegrity(app) {
     status: 'unknown',
     signed: false,
     validSignature: false,
+    developerIdSigned: false,
+    gatekeeperAccepted: false,
     identity: null,
     teamIdentifier: null,
     hardenedRuntime: false,
@@ -44,12 +52,10 @@ function inspectIntegrity(app) {
   const bundlePath = path.resolve(process.execPath, '..', '..')
   const verify = run('/usr/bin/codesign', ['--verify', '--deep', '--strict', bundlePath])
 
-  if (verify && typeof verify === 'object' && verify.error) {
-    const message = (verify.stderr || verify.stdout || verify.error.message || '').toString().trim()
+  if (verify?.error) {
+    const message = outputText(verify).trim()
     const display = run('/usr/bin/codesign', ['-dv', '--verbose=4', bundlePath])
-    const details = typeof display === 'string'
-      ? display
-      : ((display.stderr || '') + (display.stdout || ''))
+    const details = outputText(display)
 
     if (/code object is not signed|not signed at all/i.test(message)) {
       base.status = 'unsigned'
@@ -63,20 +69,39 @@ function inspectIntegrity(app) {
     base.reason = message || 'Code signature verification failed'
     base.identity = details.match(/Authority=(.+)/)?.[1] || null
     base.teamIdentifier = details.match(/TeamIdentifier=(.+)/)?.[1] || null
+    base.hardenedRuntime = /flags=.*runtime/.test(details)
     return base
   }
 
   const display = run('/usr/bin/codesign', ['-dv', '--verbose=4', bundlePath])
-  const details = typeof display === 'string'
-    ? display
-    : ((display.stderr || '') + (display.stdout || ''))
+  const details = outputText(display)
+  const identity = details.match(/Authority=(.+)/)?.[1] || null
+  const teamIdentifier = details.match(/TeamIdentifier=(.+)/)?.[1] || null
+  const developerIdSigned = /Authority=Developer ID Application:/m.test(details)
+  const hardenedRuntime = /flags=.*runtime/.test(details)
+
+  const gatekeeper = run('/usr/sbin/spctl', ['--assess', '--type', 'execute', '--verbose=2', bundlePath])
+  const gatekeeperAccepted = !gatekeeper?.error
 
   base.signed = true
   base.validSignature = true
-  base.status = 'official'
-  base.identity = details.match(/Authority=(.+)/)?.[1] || null
-  base.teamIdentifier = details.match(/TeamIdentifier=(.+)/)?.[1] || null
-  base.hardenedRuntime = /flags=.*runtime/.test(details)
+  base.developerIdSigned = developerIdSigned
+  base.gatekeeperAccepted = gatekeeperAccepted
+  base.identity = identity
+  base.teamIdentifier = teamIdentifier
+  base.hardenedRuntime = hardenedRuntime
+
+  if (developerIdSigned && hardenedRuntime && gatekeeperAccepted) {
+    base.status = 'official'
+    base.reason = null
+  } else {
+    base.status = 'signed-unverified'
+    const missing = []
+    if (!developerIdSigned) missing.push('Developer ID Application signature')
+    if (!hardenedRuntime) missing.push('Hardened Runtime')
+    if (!gatekeeperAccepted) missing.push('Gatekeeper acceptance')
+    base.reason = `Signature is valid, but this build is not fully verified: ${missing.join(', ')}.`
+  }
 
   return base
 }
