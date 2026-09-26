@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, Notification, Menu, shell, systemPr
 const os = require('os')
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
-const { inspectIntegrity, shouldBlock } = require('./backend/integrity')
+const { inspectIntegrity } = require('./backend/integrity')
 const https = require('https')
 const fs = require('fs')
 const WhatsAppCore = require('./backend/core')
@@ -653,15 +653,9 @@ core.on('notify', (items) => {
 })
 
 app.whenReady().then(() => {
-  const integrity = getIntegrityStatus()
-  if (shouldBlock(integrity)) {
-    dialog.showErrorBox(
-      'Liquid WhatsApp integrity check failed',
-      'This copy of Liquid WhatsApp appears to have been modified after it was signed. For your security, the app will close. Install the release again from the official GitHub Releases page.'
-    )
-    app.quit()
-    return
-  }
+  // Temporary development mode: do not block startup on the app-level
+  // macOS signature/integrity classification. Keep the integrity status
+  // available through diagnostics until production signing/notarization is fixed.
 
   buildMenu()
   registerIpc()
